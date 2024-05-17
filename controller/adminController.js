@@ -1,14 +1,13 @@
 const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
-const { merge } = require("../routes/admin");
 
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 })
 
-//**************************************************************************************** Admin ********************************************************************************************* */
+//**************************************************************************************** Admin ******************************************************************************************************** */
 
 const roleCheck = async (req, res) => { // used to check the role of the login admin
     try {
@@ -45,13 +44,12 @@ const postLogin = async (req, res) => { // for login implemting login currenly n
 }
 
 
-const getUsers = (req, res) => {// for getting list of users
+const getUsers = async (req, res) => {// for getting list of users
     try {
         let data = []
         admin.firestore().collection('UserNode').where('access', '==', 'App User').get()
             .then(snapshot => {
                 snapshot.forEach(doc => {
-                    // console.log(doc.id)
                     data.push(doc.data())
                 });
                 res.send({ message: "user details", data: data, status: true })
@@ -67,43 +65,33 @@ const getUsers = (req, res) => {// for getting list of users
 }
 
 
-const subAdminslist = async(req, res) => {// for to get subadmin list from firestore  
+const subAdminslist = async (req, res) => {//for getting the subadminlist
     try {
         let data = [];
         const collectionRef = admin.firestore().collection('subAdmins');
         let query = collectionRef.where("access", "==", "subAdmin");
-        
+
         if (req.body.search) {
             query = query.where("name", "==", req.body.search);
         }
+
         const snapshotCount = await query.get();
         const count = snapshotCount.size;
-        query = query.limit(req.body.limit).offset(req.body.skip);
-        // Execute the query
-        query.get()
-            .then(snapshot => {
-                snapshot.forEach(doc => {
-                    data.push(doc.data());
-                });
-                res.send({ message: "sub admin list", data: data, status: true, count: count });
-            })
-            .catch(error => {
-                console.error("Error fetching documents:", error);
-                res.status(500).send({ message: "Internal Server Error", status: false });
-            });
-        // admin.firestore().collection("subAdmins").where("access", "==", "subAdmin").get()
-        //     .then(snapshot => {
-        //         snapshot.forEach(doc => {
-        //             data.push(doc.data())
-        //         })
-        //         res.send({ message: "sub admin list", data: data, status: true })
-        //     })
-    } catch (error) {
-        console.log(error);
-        res.status(500).send({ message: "Somthing went wrong", status: false })
-    }
-}
 
+        query = query.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc');
+
+        // Execute the query
+        const snapshot = await query.get();
+        snapshot.forEach(doc => {
+            data.push(doc.data());
+        });
+
+        res.send({ message: "Sub admin list", data: data, status: true, count: count });
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).send({ message: "Something went wrong", status: false });
+    }
+};
 
 
 const createUpdateSubAdmin = async(req, res) => {// for to add/update subadmin to the firestore
@@ -125,17 +113,6 @@ const createUpdateSubAdmin = async(req, res) => {// for to add/update subadmin t
                 res.status(500).send({ message: "Error in while adding data", status: false })
             })
          }else if(actiontype==="update"){
-            //  let result= admin.firestore().collection("subAdmins").where("_id","==",data._id).get()
-            //  .then(snapshot=>{
-            //     snapshot.forEach((doc)=>{
-            //         admin.firestore().collection("subAdmins").doc(doc.id).update(data).then((res)=>{
-            //             return res.send({message:"Updated successfully",status:true})
-            //         }).catch((error)=>{
-            //             console.log(error);
-            //             return res.status(500).send({message:"somthing went wrong",status:true})
-            //         })
-            //     })
-            //  })
             const snapshot = await admin.firestore().collection("subAdmins").where("_id", "==", data._id).get();
             if (!snapshot.empty) {
                 const updatePromises = snapshot.docs.map(doc =>
@@ -144,7 +121,7 @@ const createUpdateSubAdmin = async(req, res) => {// for to add/update subadmin t
                 await Promise.all(updatePromises);
                 res.status(200).send({ message: "Sub admin updated successfully", status: true });
             } else {
-                res.status.send({ message: "No subadmin   data is not founded", status: false });
+                res.status(400).send({ message: "No sub admin data is not founded", status: false });
             }
         } 
     } catch (error) {
@@ -160,8 +137,6 @@ const getSubadmin = async (req, res) => {// for getting the subadmin details
         let data = await admin.firestore().collection("subAdmins").where("_id", "==", id).get()
         const doc = data.docs[0];
         const docData = doc.data();
-        // console.log(doc.id)
-        // console.log(docData);
         res.status(200).send({message:"sub admin data",status:true,data:docData})
         // .then(snapshot=>{
         //     snapshot.forEach((doc)=>{
@@ -178,7 +153,7 @@ const getSubadmin = async (req, res) => {// for getting the subadmin details
 }
 
 
-const deleteSubAdmin=async(req,res)=>{ // for deleting the subadmin
+const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
     let id = req.body.ids[0];
     let query = await admin.firestore().collection('subAdmins').where("_id", "==", id);
 
@@ -198,7 +173,8 @@ const deleteSubAdmin=async(req,res)=>{ // for deleting the subadmin
     }
 }
 
-const companyList=async(req,res)=>{// for getting the company list
+
+const companyList = async (req,res)=>{// for getting the company list
     try {
         let data=[]
         let collectionRef=admin.firestore().collection("companies")
@@ -207,8 +183,8 @@ const companyList=async(req,res)=>{// for getting the company list
             collectionRef=collectionRef.where("name","==",req.body.search)
         }
         let snapshotCount=await collectionRef.get()
-        let count=snapshotCount.size;
-        collectionRef=collectionRef.limit(req.body.limit).offset(req.body.skip)
+        let count=snapshotCount.size; 
+        collectionRef=collectionRef.offset(req.body.skip).limit(req.body.limit) //here want to add orderBy also to sort the document
         collectionRef.get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
                 let insertdata=doc.data()
@@ -228,35 +204,54 @@ const companyList=async(req,res)=>{// for getting the company list
     }
 }
 
-const addeditcompany = async (req, res) => { //for adding companies
+
+const addeditcompany = async (req, res) => { //for adding and editing companies
     try {
+        let type=req.body.actiontype
+        delete req.body.actiontype
         let data = req.body;
-        const docRef = await admin.firestore().collection("companies").add(data)
-        // .then((result)=>{
-        //     if(result){
-        //         res.status(200).send({ message: "Company added", status: true, });
-        //     }
-        // }).catch((error)=>{
-        //     console.log(error)
-        //     res.status(500).send({message:"somthing went wrong",status:false})
-        // })
-        const id = docRef.id;                                                        //in this way we can add the id manually inside the collection
-        await admin.firestore().collection("companies").doc(id).set({ ...data, _id: id }, { merge: true }).then((res)).then((result)=>{
-            res.status(200).send({ message: "Company added", status: true, });
-        })
+        if(type==="create"){
+            data.createAt=admin.firestore.FieldValue.serverTimestamp()
+            const docRef = await admin.firestore().collection("companies").add(data)
+            // .then((result)=>{
+            //     if(result){
+            //         res.status(200).send({ message: "Company added", status: true, });
+            //     }
+            // }).catch((error)=>{
+            //     console.log(error)
+            //     res.status(500).send({message:"somthing went wrong",status:false})
+            // })
+            const id = docRef.id;                                                        //in this way we can add the id manually inside the collection
+            await admin.firestore().collection("companies").doc(id).set({ ...data, _id: id }, { merge: true }).then((result)=>{
+                 res.status(200).send({ message: "Company added", status: true, });
+            })
+        }else if(type==="update"){
+            console.log(req.body)
+            let data=req.body
+            let result=await admin.firestore().collection("companies").doc(data._id).update(data).then((result)=>{
+                console.log(res)
+                res.send({message:"Update successully",status:true})
+            }).catch((error)=>{
+                console.log(error)
+                res.status(500).send({message:"somthing went wrong",status:false})
+            })
+           
+        }
+       
     } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Something went wrong", status: false });
     }
 };
 
-const companyDelete=async(req,res)=>{
+
+const companyDelete = async (req,res)=>{//for deleting the company
     try {
         let id=req.body.ids[0]
         if(id){
             let docRef = admin.firestore().collection("companies").doc(id)
             await docRef.delete()
-            res.status(200).send({message:"company deleted",status:true})
+            res.status(200).send({message:"company deleted",status:true})   
 
         }else{
             res.status(500).send({message:"invalide id",status:false})
@@ -268,7 +263,8 @@ const companyDelete=async(req,res)=>{
     }
 }
 
-const getCompany=async(req,res)=>{
+
+const getCompany = async (req,res)=>{//for getting the companydetails one at a time
     try {
         let id=req.body.data
         let docRef= await admin.firestore().collection("companies").doc(id).get()
@@ -282,9 +278,29 @@ const getCompany=async(req,res)=>{
     }
 }
 
+const companyStatus = async (req,res)=>{//for upating the company status
+    try {
+        let {id,status}=req.body
+        data={
+            status:status
+        }
+        await admin.firestore().collection("companies").doc(id).update(data).then((result)=>{
+            if(result){
+                res.send({message:"Updated successfully",status:true})
+            }
+        }).catch((error)=>{
+            console.log(error)
+            res.status(500).send({message:"somthing went wrong",status:false})
+        })
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong", status:false})
+    }
+}
 
 
-/***********************************************************************************************************************************************************************************************/
+/**********************************************************************************************************************************************************************************************************************/
 
 module.exports = {
     getUsers,
@@ -297,7 +313,8 @@ module.exports = {
     companyList,
     addeditcompany,
     companyDelete,
-    getCompany
+    getCompany,
+    companyStatus
 
 }
 
@@ -334,3 +351,16 @@ module.exports = {
             //             })
             //             res.send({ message: "sub admin list", data: data, status: true,count:counts }) //here want to implement the actual count of the document that we got
             //         }) 
+
+            //////////////////////////////////////////////////////////////////////////////update methode another way
+            //  let result= admin.firestore().collection("subAdmins").where("_id","==",data._id).get()
+            //  .then(snapshot=>{
+            //     snapshot.forEach((doc)=>{
+            //         admin.firestore().collection("subAdmins").doc(doc.id).update(data).then((res)=>{
+            //             return res.send({message:"Updated successfully",status:true})
+            //         }).catch((error)=>{
+            //             console.log(error);
+            //             return res.status(500).send({message:"somthing went wrong",status:true})
+            //         })
+            //     })
+            //  })
