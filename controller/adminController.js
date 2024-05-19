@@ -44,27 +44,6 @@ const postLogin = async (req, res) => { // for login implemting login currenly n
 }
 
 
-const getUsers = async (req, res) => {// for getting list of users
-    try {
-        let data = []
-        admin.firestore().collection('UserNode').where('access', '==', 'App User').get()
-            .then(snapshot => {
-                snapshot.forEach(doc => {
-                    data.push(doc.data())
-                });
-                res.send({ message: "user details", data: data, status: true })
-            })
-            .catch(err => {
-                console.log('Error getting documents', err);
-                res.status(500).json({ message: "Internal server error", status: false });
-            });
-    } catch (error) {
-        console.log(error)
-        res.status(500).send({ message: "Somthing went wrong", status: false })
-    }
-}
-
-
 const subAdminslist = async (req, res) => {//for getting the subadminlist
     try {
         let data = [];
@@ -299,6 +278,33 @@ const companyStatus = async (req,res)=>{//for upating the company status
     }
 }
 
+
+
+const getUsers = async (req, res) => {
+    try {
+        console.log(req.body);
+        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User');
+        
+        if (req.body.search) {
+            console.log(req.body.search)
+            query = query.where("username", "==", req.body.search);
+        }
+        const count = (await query.get()).size
+        
+        const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+        let data = [];
+        snapshot.forEach((doc) => {
+            data.push({_id:doc.id,...doc.data()});
+        });
+
+        res.status(200).send({ data, count, message: "Users fetched successfully", status: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Something went wrong", status: false });
+    }
+};
+
+module.exports = getUsers;
 
 /**********************************************************************************************************************************************************************************************************************/
 
