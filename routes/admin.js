@@ -2,7 +2,7 @@ const express=require("express")
 
 const adminRouter=express()
 const adminController=require("../controller/adminController")
-/****************************************************Admin routes */
+/*************************************************************************Admin routes****************************************************************************** */
 
 // adminRouter.post("/login",adminController.postLogin)
 adminRouter.post("/role_check",adminController.roleCheck)
