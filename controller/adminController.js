@@ -1,6 +1,8 @@
 const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
+const { getRounds } = require("bcrypt");
+const { doc } = require("firebase/firestore");
 
 
 admin.initializeApp({
@@ -257,6 +259,7 @@ const getCompany = async (req,res)=>{//for getting the companydetails one at a t
     }
 }
 
+
 const companyStatus = async (req,res)=>{//for upating the company status
     try {
         let {id,status}=req.body
@@ -279,10 +282,8 @@ const companyStatus = async (req,res)=>{//for upating the company status
 }
 
 
-
-const getUsers = async (req, res) => {
-    try {
-        console.log(req.body);
+const getUsersList = async (req, res) => {//for getting the userslist
+    try {   
         let query = admin.firestore().collection("UserNode").where('access', '==', 'App User');
         
         if (req.body.search) {
@@ -304,12 +305,105 @@ const getUsers = async (req, res) => {
     }
 };
 
-module.exports = getUsers;
+
+const getcompanynames=async(req,res)=>{//for getting the companynames
+    try {
+        console.log("reached here")
+        let data=[]
+        admin.firestore().collection("companies").where("status","==",1).get().then((snapshot)=>{
+            snapshot.forEach((doc)=>{
+                // console.log(doc.data())
+                data.push({_id:doc.id,...doc.data()})
+            })
+            console.log(data)
+            res.status(200).send({message:'compnay names',stauts:true,data:data})
+        }).catch((error)=>{
+            console.log(error)
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong ",status:false})
+    }
+}
+
+
+const addedituser=async(req,res)=>{//for adding users
+    console.log(req.body)
+    try {
+        let actiontype=req.body.actiontype
+        delete req.body.actiontype
+        let data=req.body
+        data.access="App User"
+        if(actiontype==="create"){
+            // console.log("inside");
+            data.createAt=admin.firestore.FieldValue.serverTimestamp()
+            admin.firestore().collection("UserNode").add(data)
+            .then((dodRef)=>{
+                return dodRef.update({_id:dodRef.id})
+            }).then((result)=>{
+                // console.log("documetn added successfully")
+                res.send({message:"user added successfully",status:true})
+            }).catch((error)=>{
+                console.log(error);
+            })
+        }else if(actiontype=="edit"){
+            admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
+                res.status(200).send({message:'updated successfully',status:true})
+
+            }).catch((error)=>{
+                res.status(500).send({message:"somthing went wrong",status:false})
+            })
+
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const getuserDetails=async(req,res)=>{
+    try {
+        console.log("herte")
+        console.log(req.body)
+        let id=req.body.id
+        let docRef=await  admin.firestore().collection("UserNode").doc(id).get()
+        let data=docRef.data()
+        data._id=docRef.id
+        res.send({message:"userDetails fetched succssfully", status:true,data:data})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+const userStatus=async(req,res)=>{
+    try {
+        let {id,status}=req.body
+        console.log(id,status)
+        admin.firestore().collection("UserNode").doc(id).update({status:status}).then((result)=>{
+            res.status(200).send({message:'status updated',status:true})
+        }).catch((error)=>{
+            res.status(500).send({message:"somthing went wrong",status:false})
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+const deleteUser=async(req,res)=>{
+    try {
+        console.log(req.body)
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
 
 /**********************************************************************************************************************************************************************************************************************/
 
 module.exports = {
-    getUsers,
+    getUsersList,
     postLogin,
     roleCheck,
     subAdminslist,
@@ -320,7 +414,13 @@ module.exports = {
     addeditcompany,
     companyDelete,
     getCompany,
-    companyStatus
+    companyStatus,
+    getcompanynames,
+    addedituser,
+    getuserDetails,
+    userStatus,
+    deleteUser
+
 
 }
 
