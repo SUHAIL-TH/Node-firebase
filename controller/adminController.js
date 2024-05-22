@@ -361,7 +361,7 @@ const addedituser=async(req,res)=>{//for adding users
     }
 }
 
-const getuserDetails=async(req,res)=>{
+const getuserDetails=async(req,res)=>{//for get user details
     try {
         console.log("herte")
         console.log(req.body)
@@ -375,7 +375,7 @@ const getuserDetails=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
-const userStatus=async(req,res)=>{
+const userStatus=async(req,res)=>{//for change the user status
     try {
         let {id,status}=req.body
         console.log(id,status)
@@ -389,7 +389,7 @@ const userStatus=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
-const deleteUser=async(req,res)=>{
+const deleteUser=async(req,res)=>{//for delete the user only change the status to 0=delete 1=active 2=indactive
     try {
         console.log(req.body)
     } catch (error) {
@@ -397,6 +397,7 @@ const deleteUser=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
 
 
 
