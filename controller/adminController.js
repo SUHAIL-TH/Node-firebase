@@ -408,33 +408,33 @@ const deleteUser=async(req,res)=>{//for delete the user only change the status t
 }
 
 
-// const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
-//     try {
-//         let file=req.file
-//         if(!file){
-//             res.status(400).send({message:'no files is uploaded',status:false})
-//         }
-//         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-//         const sheetName = workbook.SheetNames[0];
-//         const worksheet = workbook.Sheets[sheetName];
-//         const jsonData = XLSX.utils.sheet_to_json(worksheet);
+const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
+    try {
+        let file=req.file
+        if(!file){
+            res.status(400).send({message:'no files is uploaded',status:false})
+        }
+        const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
 
-//          jsonData.forEach((data, index) => {
-//             data.access="App User"
-//             data.status=1
-//             data.company=req.body.company
-//             data.companyid=req.body.companyid
-//             admin.firestore().collection("UserNode").add(data)
-//         });
-//         res.send({message:"Upload completed",status:true})
+         jsonData.forEach((data, index) => {
+            data.access="App User"
+            data.status=1
+            data.company=req.body.company
+            data.companyid=req.body.companyid
+            admin.firestore().collection("UserNode").add(data)
+        });
+        res.send({message:"Upload completed",status:true})
 
         
-//     } catch (error) {
-//         console.log(error)
-//         res.status(500).send({message:"somthing went wrong",status:false})
-//     }
-// }
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
 
 
