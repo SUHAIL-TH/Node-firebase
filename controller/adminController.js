@@ -1,8 +1,8 @@
 const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
-const { getRounds } = require("bcrypt");
-const { doc } = require("firebase/firestore");
+const XLSX  =require("xlsx")
+
 
 
 admin.initializeApp({
@@ -158,7 +158,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
 const companyList = async (req,res)=>{// for getting the company list
     try {
         let data=[]
-        let collectionRef=admin.firestore().collection("companies")
+        let collectionRef=admin.firestore().collection("companies").where("status","in",[1,2])
         if(req.body.search){
             console.log(req.body.search);
             collectionRef=collectionRef.where("name","==",req.body.search)
@@ -230,8 +230,8 @@ const companyDelete = async (req,res)=>{//for deleting the company
     try {
         let id=req.body.ids[0]
         if(id){
-            let docRef = admin.firestore().collection("companies").doc(id)
-            await docRef.delete()
+            let docRef = admin.firestore().collection("companies").doc(id).update({status:0})
+            // await docRef.delete()
             res.status(200).send({message:"company deleted",status:true})   
 
         }else{
@@ -284,7 +284,7 @@ const companyStatus = async (req,res)=>{//for upating the company status
 
 const getUsersList = async (req, res) => {//for getting the userslist
     try {   
-        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User');
+        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",[1,2]);
         
         if (req.body.search) {
             console.log(req.body.search)
@@ -327,7 +327,7 @@ const getcompanynames=async(req,res)=>{//for getting the companynames
 }
 
 
-const addedituser=async(req,res)=>{//for adding users
+const addedituser=async(req,res)=>{//for add and edititng the user
     console.log(req.body)
     try {
         let actiontype=req.body.actiontype
@@ -335,13 +335,11 @@ const addedituser=async(req,res)=>{//for adding users
         let data=req.body
         data.access="App User"
         if(actiontype==="create"){
-            // console.log("inside");
             data.createAt=admin.firestore.FieldValue.serverTimestamp()
             admin.firestore().collection("UserNode").add(data)
             .then((dodRef)=>{
                 return dodRef.update({_id:dodRef.id})
             }).then((result)=>{
-                // console.log("documetn added successfully")
                 res.send({message:"user added successfully",status:true})
             }).catch((error)=>{
                 console.log(error);
@@ -361,6 +359,7 @@ const addedituser=async(req,res)=>{//for adding users
     }
 }
 
+
 const getuserDetails=async(req,res)=>{//for get user details
     try {
         console.log("herte")
@@ -375,6 +374,8 @@ const getuserDetails=async(req,res)=>{//for get user details
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
+
 const userStatus=async(req,res)=>{//for change the user status
     try {
         let {id,status}=req.body
@@ -389,14 +390,52 @@ const userStatus=async(req,res)=>{//for change the user status
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
+
 const deleteUser=async(req,res)=>{//for delete the user only change the status to 0=delete 1=active 2=indactive
     try {
         console.log(req.body)
+        let id=req.body.ids[0]
+        admin.firestore().collection("UserNode").doc(id).update({status:0}).then((result)=>{
+            res.send({message:"deleted successfully",status:true})
+        }).catch((error)=>{
+            res.status(500).send({message:"somthing went wrong",status:false})
+        })
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
+
+// const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
+//     try {
+//         let file=req.file
+//         if(!file){
+//             res.status(400).send({message:'no files is uploaded',status:false})
+//         }
+//         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+//         const sheetName = workbook.SheetNames[0];
+//         const worksheet = workbook.Sheets[sheetName];
+//         const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+
+//          jsonData.forEach((data, index) => {
+//             data.access="App User"
+//             data.status=1
+//             data.company=req.body.company
+//             data.companyid=req.body.companyid
+//             admin.firestore().collection("UserNode").add(data)
+//         });
+//         res.send({message:"Upload completed",status:true})
+
+        
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somthing went wrong",status:false})
+//     }
+// }
+
 
 
 
@@ -420,7 +459,8 @@ module.exports = {
     addedituser,
     getuserDetails,
     userStatus,
-    deleteUser
+    deleteUser,
+    bulkuploaduser
 
 
 }
