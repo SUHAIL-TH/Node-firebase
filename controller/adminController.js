@@ -1,7 +1,8 @@
 const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
-const XLSX  =require("xlsx")
+const XLSX  =require("xlsx");
+const { Ruleset } = require("firebase-admin/security-rules");
 
 
 
@@ -158,7 +159,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
 const companyList = async (req,res)=>{// for getting the company list
     try {
         let data=[]
-        let collectionRef=admin.firestore().collection("companies").where("status","in",[1,2])
+        let collectionRef=admin.firestore().collection("companies").where("status","in",["1","2"])
         if(req.body.search){
             console.log(req.body.search);
             collectionRef=collectionRef.where("name","==",req.body.search)
@@ -230,7 +231,7 @@ const companyDelete = async (req,res)=>{//for deleting the company
     try {
         let id=req.body.ids[0]
         if(id){
-            let docRef = admin.firestore().collection("companies").doc(id).update({status:0})
+            let docRef = admin.firestore().collection("companies").doc(id).update({status:"0"})
             // await docRef.delete()
             res.status(200).send({message:"company deleted",status:true})   
 
@@ -284,7 +285,7 @@ const companyStatus = async (req,res)=>{//for upating the company status
 
 const getUsersList = async (req, res) => {//for getting the userslist
     try {   
-        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",[1,2]);
+        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",[1,2,"1","2"]);
         
         if (req.body.search) {
             console.log(req.body.search)
@@ -295,6 +296,7 @@ const getUsersList = async (req, res) => {//for getting the userslist
         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
         let data = [];
         snapshot.forEach((doc) => {
+            console.log(doc.id)
             data.push({_id:doc.id,...doc.data()});
         });
 
@@ -340,6 +342,7 @@ const addedituser=async(req,res)=>{//for add and edititng the user
             .then((dodRef)=>{
                 return dodRef.update({_id:dodRef.id})
             }).then((result)=>{
+                console.log(result);
                 res.send({message:"user added successfully",status:true})
             }).catch((error)=>{
                 console.log(error);
@@ -396,7 +399,7 @@ const deleteUser=async(req,res)=>{//for delete the user only change the status t
     try {
         console.log(req.body)
         let id=req.body.ids[0]
-        admin.firestore().collection("UserNode").doc(id).update({status:0}).then((result)=>{
+        admin.firestore().collection("UserNode").doc(id).update({status:"0"}).then((result)=>{
             res.send({message:"deleted successfully",status:true})
         }).catch((error)=>{
             res.status(500).send({message:"somthing went wrong",status:false})
@@ -412,21 +415,28 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     try {
         let file=req.file
         if(!file){
-            res.status(400).send({message:'no files is uploaded',status:false})
+           return res.status(400).send({message:'no files is uploaded',status:false})
         }
-        const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        const workbook = XLSX.read(file.buffer, { type: "buffer"}); //this is for readintg the beffer data in our req.file
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-
-         jsonData.forEach((data, index) => {
+         let datasss=jsonData.map(async(data, index) => {
             data.access="App User"
-            data.status=1
+            data.status="1"
             data.company=req.body.company
             data.companyid=req.body.companyid
-            admin.firestore().collection("UserNode").add(data)
+            try {
+                let result=await admin.firestore().collection("companies").add(data)
+                return { success: true, id: result.id };
+            } catch (error) {   
+                return {success:false,error:error}
+            }
+
         });
+        let result= await Promise.all(datasss)
+       
         res.send({message:"Upload completed",status:true})
 
         
@@ -481,6 +491,9 @@ module.exports = {
 
 
             ////////////////////////////////////////////////////////////////////////////////////pagination implemented by me itself
+
+
+
             // let data = []
             // let query = admin.firestore().collection("subAdmins");
             // console.log(req.body);
@@ -499,7 +512,11 @@ module.exports = {
             //             res.send({ message: "sub admin list", data: data, status: true,count:counts }) //here want to implement the actual count of the document that we got
             //         }) 
 
-            //////////////////////////////////////////////////////////////////////////////update methode another way
+
+
+            //**********************************************************************************update methode another way*********************************************************
+
+
             //  let result= admin.firestore().collection("subAdmins").where("_id","==",data._id).get()
             //  .then(snapshot=>{
             //     snapshot.forEach((doc)=>{
@@ -511,3 +528,9 @@ module.exports = {
             //         })
             //     })
             //  })
+
+            //***********************************************************************************delete the documetn ***************************************************************************
+
+
+            // let snapshots=await admin.firestore().collection("companies").where("access","==","App User").get()
+            // snapshots.docs.map((doc)=>doc.ref.delete())
