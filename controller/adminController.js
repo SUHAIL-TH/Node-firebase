@@ -159,7 +159,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
 const companyList = async (req,res)=>{// for getting the company list
     try {
         let data=[]
-        let collectionRef=admin.firestore().collection("companies").where("status","in",["1","2"])
+        let collectionRef=admin.firestore().collection("companies").where('access',"==","company").where("status","in",["1","2"])
         if(req.body.search){
             console.log(req.body.search);
             collectionRef=collectionRef.where("name","==",req.body.search)
@@ -419,23 +419,24 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
         }
         const workbook = XLSX.read(file.buffer, { type: "buffer"}); //this is for readintg the beffer data in our req.file
         const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        const   worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
          let datasss=jsonData.map(async(data, index) => {
             data.access="App User"
             data.status="1"
+            data.mobile=data.mobile.toString()
             data.company=req.body.company
             data.companyid=req.body.companyid
             try {
-                let result=await admin.firestore().collection("companies").add(data)
+                let result=await admin.firestore().collection("UserNode").add(data)
                 return { success: true, id: result.id };
             } catch (error) {   
                 return {success:false,error:error}
             }
 
         });
-        let result= await Promise.all(datasss)
+        let result= await Promise.all(datasss)//this is used to await until all the user are added to the firebase store and then only want to sent the response back to front end
        
         res.send({message:"Upload completed",status:true})
 
