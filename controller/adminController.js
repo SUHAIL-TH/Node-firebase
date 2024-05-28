@@ -293,7 +293,7 @@ const getUsersList = async (req, res) => {//for getting the userslist
         }
         const count = (await query.get()).size
         
-        const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
         let data = [];
         snapshot.forEach((doc) => {
             console.log(doc.id)
@@ -312,7 +312,7 @@ const getcompanynames=async(req,res)=>{//for getting the companynames
     try {
         console.log("reached here")
         let data=[]
-        admin.firestore().collection("companies").where("status","==",1).get().then((snapshot)=>{
+        admin.firestore().collection("companies").where("status","in",["1","2"]).get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
                 // console.log(doc.data())
                 data.push({_id:doc.id,...doc.data()})
@@ -346,6 +346,7 @@ const addedituser=async(req,res)=>{//for add and edititng the user
                 res.send({message:"user added successfully",status:true})
             }).catch((error)=>{
                 console.log(error);
+                res.status(500).send({message:"somnthing went wrong",status:false})
             })
         }else if(actiontype=="edit"){
             admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
@@ -447,6 +448,32 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     }
 }
 
+const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companies
+    try {
+        let action=data.action
+        delete req.body.action
+        console.log(req.body)
+        let data=req.body
+        if(action==="create"){
+            admin.firestore().collection("companies").add(data).then((docRef)=>{
+                // console.log(result)
+                return docRef.update({_id:docRef.id}) //this is used to add the id to the document we have created in firebase
+            }).then((result)=>{
+                console.log(result)
+                res.send({messsage:"Added succusfully",status:true})
+            }).catch((error)=>{
+                console.log(error)
+                res.status(500).send({message:"somthing went wrong",status:true})
+            })
+        }else{
+
+        }
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong ",status:false})
+    }
+}
 
 
 
@@ -471,7 +498,8 @@ module.exports = {
     getuserDetails,
     userStatus,
     deleteUser,
-    bulkuploaduser
+    bulkuploaduser,
+    addcompanySubadmin
 
 
 }
