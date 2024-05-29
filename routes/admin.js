@@ -21,6 +21,7 @@ adminRouter.post("/deletecompany",adminController.companyDelete)
 adminRouter.post("/getcompany",adminController.getCompany)
 adminRouter.post("/updatecompanystatus",adminController.companyStatus)
 adminRouter.get("/getcompnaynames",adminController.getcompanynames)
+adminRouter.post("/compnaysubadmin",adminController.addcompanySubadmin)
 
 
 adminRouter.post("/get_users",adminController.getUsersList)
@@ -29,5 +30,6 @@ adminRouter.post('/getuserdetail',adminController.getuserDetails)
 adminRouter.post("/updateuserstatus",adminController.userStatus)
 adminRouter.post("/users/delete",adminController.deleteUser)
 adminRouter.post('/bluckuploaduser', upload.single('file'),adminController.bulkuploaduser)
+
 
 module.exports=adminRouter
