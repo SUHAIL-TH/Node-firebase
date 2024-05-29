@@ -28,7 +28,7 @@ const fileFilter = (req, file, cb) => {
 // Configure multer with storage and file filter
 let upload = multer({
     storage: storage,
-    fileFilter: fileFilter
+    fileFilter: fileFilter //this is for the filtering the file only want to accept xcel type only
 });
 
 // Export the configured multer instance
