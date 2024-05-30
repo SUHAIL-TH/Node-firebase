@@ -17,11 +17,12 @@ adminRouter.post("/deletesubadmin",adminController.deleteSubAdmin)
 
 adminRouter.post("/companeylist",adminController.companyList)
 adminRouter.post("/addeditcompany",adminController.addeditcompany)
-adminRouter.post("/deletecompany",adminController.companyDelete)
+adminRouter.post("/deletecompany",adminController.company_subadmin_Delete)
 adminRouter.post("/getcompany",adminController.getCompany)
 adminRouter.post("/updatecompanystatus",adminController.companyStatus)
 adminRouter.get("/getcompnaynames",adminController.getcompanynames)
-adminRouter.post("/compnaysubadmin",adminController.addcompanySubadmin)
+adminRouter.post("/addcompnaysubadmin",adminController.addcompanySubadmin)
+adminRouter.post("/companysubadminlist",adminController.companySubadminList)
 
 
 adminRouter.post("/get_users",adminController.getUsersList)
