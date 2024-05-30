@@ -2,7 +2,6 @@ const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
 const XLSX  =require("xlsx");
-const { Ruleset } = require("firebase-admin/security-rules");
 
 
 
@@ -227,7 +226,7 @@ const addeditcompany = async (req, res) => { //for adding and editing companies
 };
 
 
-const companyDelete = async (req,res)=>{//for deleting the company
+const company_subadmin_Delete = async (req,res)=>{//for deleting the company
     try {
         let id=req.body.ids[0]
         if(id){
@@ -312,7 +311,7 @@ const getcompanynames=async(req,res)=>{//for getting the companynames
     try {
         console.log("reached here")
         let data=[]
-        admin.firestore().collection("companies").where("status","in",["1","2"]).get().then((snapshot)=>{
+        admin.firestore().collection("companies").where("access","==","company").where("status","in",["1","2"]).get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
                 // console.log(doc.data())
                 data.push({_id:doc.id,...doc.data()})
@@ -448,11 +447,12 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     }
 }
 
+
 const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companies
     try {
-        let action=data.action
-        delete req.body.action
-        console.log(req.body)
+        let action=req.body.actiontype
+        delete req.body.actiontype
+        // console.log(req.body)
         let data=req.body
         if(action==="create"){
             admin.firestore().collection("companies").add(data).then((docRef)=>{
@@ -465,8 +465,12 @@ const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companie
                 console.log(error)
                 res.status(500).send({message:"somthing went wrong",status:true})
             })
-        }else{
-
+        }else if(action=="update"){
+            admin.firestore().collection("companies").doc(data._id).update(data).then((result)=>{
+                res.status(200).send({message:"updata successfully",status:true})
+            }).catch((error)=>{
+                res.status(500).send({message:"somthing went wrong",status:false})
+            })
         }
         
     } catch (error) {
@@ -475,6 +479,47 @@ const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companie
     }
 }
 
+
+const companySubadminList=async(req,res)=>{//for getting the compnay subadmin list
+    try {
+        let query = admin.firestore().collection("companies").where('access', '==', 'companysubadmin').where('status',"in",["1","2"]);
+        
+        if (req.body.search) {
+            console.log(req.body.search)
+            query = query.where("name", "==", req.body.search);
+        }
+        const count = (await query.get()).size
+        
+         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+        let data = [];
+        snapshot.forEach((doc) => {
+            console.log(doc.id)
+            data.push(doc.data());
+        });
+
+        res.status(200).send({ data, count, message: "company subadmin fetched successfully", status: true });
+
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+const getcompanysubadmin=async(req,res)=>{//for getting the specific subadmin details
+    try {
+        let id=req.body.data
+        let docRef= await admin.firestore().collection("companies").doc(id).get()
+        let data=docRef.data()
+        data._id=docRef.id
+        res.status(200).send({message:"company details",data:data,status:true})
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
 
 
@@ -490,7 +535,7 @@ module.exports = {
     deleteSubAdmin,
     companyList,
     addeditcompany,
-    companyDelete,
+    company_subadmin_Delete,
     getCompany,
     companyStatus,
     getcompanynames,
@@ -499,7 +544,9 @@ module.exports = {
     userStatus,
     deleteUser,
     bulkuploaduser,
-    addcompanySubadmin
+    addcompanySubadmin,
+    companySubadminList,
+    getcompanysubadmin
 
 
 }
