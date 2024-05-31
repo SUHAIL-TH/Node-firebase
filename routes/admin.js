@@ -32,5 +32,7 @@ adminRouter.post("/updateuserstatus",adminController.userStatus)
 adminRouter.post("/users/delete",adminController.deleteUser)
 adminRouter.post('/bluckuploaduser', upload.single('file'),adminController.bulkuploaduser)
 
+adminRouter.post("/batchaddedit",adminController.addeditBatch)
+
 
 module.exports=adminRouter
