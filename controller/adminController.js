@@ -545,7 +545,7 @@ const addeditBatch=async(req,res)=>{
             }else{
                 
                 let today=moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
-                let filterdate=moment().subtract(data.date,"months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let filterdate=moment().subtract(data.date,"months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');//convert the data to start of the day 
                 // console.log(filterdate)
                 // console.log(today)
                 let idofdoc
