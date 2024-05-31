@@ -2,6 +2,8 @@ const admin = require("firebase-admin")
 // const firebase=require('firebase')
 const serviceAccount = require('../serviceAccountKey.json');
 const XLSX  =require("xlsx");
+const { request } = require("../routes/admin");
+const moment=require("moment")
 
 
 
@@ -160,8 +162,8 @@ const companyList = async (req,res)=>{// for getting the company list
         let data=[]
         let collectionRef=admin.firestore().collection("companies").where('access',"==","company").where("status","in",["1","2"])
         if(req.body.search){
-            console.log(req.body.search);
-            collectionRef=collectionRef.where("name","==",req.body.search)
+            let search=req.body.search.toLowerCase()
+            collectionRef=collectionRef.where("slugname","==",search)
         }
         let snapshotCount=await collectionRef.get()
         let count=snapshotCount.size; 
@@ -522,6 +524,54 @@ const getcompanysubadmin=async(req,res)=>{//for getting the specific subadmin de
 }
 
 
+const addeditBatch=async(req,res)=>{
+    try {
+        console.log(req.body)
+        let action=req.body.actiontype
+        delete req.body.actiontype
+        let data=req.body
+        
+        if(action==="create"){
+            
+            if(data.date==="custom"){
+                let startdate=new Date(data.datepicker[0])
+                let enddate=new Date(data.datepicker[1])
+                startdate.setUTCHours(0,0,0,0)
+                startdata.toISOSting()
+                enddate.setUTCHours(0,0,0,0)
+                enddate.toISOString()
+                
+
+            }else{
+                
+                let today=moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let filterdate=moment().subtract(data.date,"months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                // console.log(filterdate)
+                // console.log(today)
+                let idofdoc
+               await admin.firestore().collection("batch").add(data).then((docRef)=>{
+                    idofdoc=docRef.id
+                    return docRef.update({_id:docRef.id})
+                })
+                let userdatas=[]
+               await admin.firestore().collection("userNode").where("joindata",">=",filterdate).get().then((snapshot)=>{
+                    snapshot.forEach((doc)=>{
+                        userdatas.push(doc.data())
+                    })
+                })
+                console.log(idofdoc)
+                res.send({message:"batch created",status:true})
+            }
+        }else if(action==="update"){
+
+        }
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
 
 /**********************************************************************************************************************************************************************************************************************/
 
@@ -546,7 +596,8 @@ module.exports = {
     bulkuploaduser,
     addcompanySubadmin,
     companySubadminList,
-    getcompanysubadmin
+    getcompanysubadmin,
+    addeditBatch
 
 
 }
