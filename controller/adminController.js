@@ -333,7 +333,7 @@ const getcompanynames=async(req,res)=>{//for getting the companynames
 const addedituser=async(req,res)=>{//for add and edititng the user
     console.log(req.body)
     try {
-        let actiontype=req.body.actiontype
+        let actiontype=req.body.actiontype  
         delete req.body.actiontype
         let data=req.body
         data.access="App User"
@@ -524,9 +524,8 @@ const getcompanysubadmin=async(req,res)=>{//for getting the specific subadmin de
 }
 
 
-const addeditBatch=async(req,res)=>{
+const addeditBatch=async(req,res)=>{//for adding batches and users to the batches
     try {
-        console.log(req.body)
         let action=req.body.actiontype
         delete req.body.actiontype
         let data=req.body
@@ -534,44 +533,170 @@ const addeditBatch=async(req,res)=>{
         if(action==="create"){
             
             if(data.date==="custom"){
-                let startdate=new Date(data.datepicker[0])
-                let enddate=new Date(data.datepicker[1])
-                startdate.setUTCHours(0,0,0,0)
-                startdata.toISOSting()
-                enddate.setUTCHours(0,0,0,0)
-                enddate.toISOString()
+                const startdate = moment(data.datepicker[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                const endate=moment(data.datepicker[`1`]).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+         
+
+              
+                let bathref=await admin.firestore().collection('batch').add(data)
+                let companyRef=await admin.firestore().collection("companies").doc(data.companyid)
+                await companyRef.update({
+                    batchcount:admin.firestore.FieldValue.increment(1)
+                })
+                let idofBatch=bathref.id
+                await bathref.update({_id:idofBatch})
+
+                let snapshot= await admin.firestore().collection("UserNode").where("joindate", ">=", startdate).where("joindate","<=",endate).where("city","==",data.city).get();
+                let userDatas = [];
+                snapshot.forEach(doc => {
+                    userDatas.push(doc.data());
+                });
+                // console.log(userDatas)
+                let userIds = userDatas.map(x => x._id);
+                let batchPromises = userIds.map(async (id) => {
+                    let userBatchSnapshot = await admin.firestore().collection("userbatch")
+                    .where("userid", "==", id)
+                    .get();
+                    // .where("batchid", "==", idOfBatch)
                 
+                if (userBatchSnapshot.empty) {
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idofBatch});
+                    await userBatchRef.update({_id: userBatchRef.id});
+                }
+    
+                });
+
+                // Wait for all batchPromises to resolve
+                await Promise.all(batchPromises);
+
+                res.send({message: "Batch created", status: true});
+                
+
 
             }else{
                 
-                let today=moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
-                let filterdate=moment().subtract(data.date,"months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');//convert the data to start of the day 
-                // console.log(filterdate)
-                // console.log(today)
-                let idofdoc
-               await admin.firestore().collection("batch").add(data).then((docRef)=>{
-                    idofdoc=docRef.id
-                    return docRef.update({_id:docRef.id})
+                let today = moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let filterDate = moment().subtract(data.date, "months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        
+                // Add a new batch and get its ID
+                data.createAt=admin.firestore.FieldValue.serverTimestamp()//this is used to create the timestamp
+                let batchRef = await admin.firestore().collection("batch").add(data);
+                let companyRef=await admin.firestore().collection("companies").doc(data.companyid)
+                await companyRef.update({
+                    batchcount:admin.firestore.FieldValue.increment(1)
                 })
-                let userdatas=[]
-               await admin.firestore().collection("userNode").where("joindata",">=",filterdate).get().then((snapshot)=>{
-                    snapshot.forEach((doc)=>{
-                        userdatas.push(doc.data())
-                    })
-                })
-                console.log(idofdoc)
-                res.send({message:"batch created",status:true})
+                let idOfBatch = batchRef.id;
+                await batchRef.update({_id: idOfBatch});
+
+                 // Fetch user data based on the filter date
+                let snapshot = await admin.firestore().collection("UserNode").where("joindate", ">=", filterDate).where("city","==",data.city).get();
+                
+                let userDatas = [];
+                snapshot.forEach(doc => {
+                    userDatas.push(doc.data());
+                });
+
+                // Map user IDs from the user data
+                let userIds = userDatas.map(x => x._id);
+
+                // Add userbatch documents for each user
+                let batchPromises = userIds.map(async (id) => {
+                    let userBatchSnapshot = await admin.firestore().collection("userbatch")
+                    .where("userid", "==", id)
+                    .get();
+                    // .where("batchid", "==", idOfBatch)
+                    
+                if (userBatchSnapshot.empty) {
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idOfBatch});
+                    await userBatchRef.update({_id: userBatchRef.id});
+                }
+                });
+                // Wait for all batchPromises to resolve
+                await Promise.all(batchPromises);
+
+                res.send({message: "Batch created", status: true});
             }
         }else if(action==="update"){
+            console.log(req.body)
+            await admin.firestore().collection("batch").doc(data._id).update(data)
+            res.status(200).send({message:"updated successfully",status:true})
 
         }
-        
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
 
+const getbatchlist=async(req,res)=>{//foir getting the batchlist
+    try {
+        // console.log(req.body)
+        let batchlist=[]
+        
+        let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
+        if(req.body.search){
+           query= query.where("slugname","==",req.body.search)
+        }
+        const count = (await query.get()).size
+        
+         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+        snapshot.forEach((doc)=>{
+            batchlist.push(doc.data())
+        })
+        res.send({message:"batchlist",count:count,status:true,data:batchlist})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+const batchStatus=async(req,res)=>{//for updateing the status of the the batch
+    try {
+        console.log(req.body);
+        let {id,status}=req.body
+         admin.firestore().collection("batch").doc(id).update({status:status}).then((res)=>{
+            res.status(200).send({message:"status updated successfully",status:true})
+        }).catch((error)=>{
+            res.status(500).send({message:"somthing went wrong",status:false})
+        })
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+const getBatchDetails=async(req,res)=>{
+    try {
+        let {id}=req.body
+        console.log(id);
+        let docRef=await admin.firestore().collection('batch').doc(id).get()
+        let data=docRef.data()
+        data._id=docRef.id
+        // console.log(data)
+        res.status(200).send({message:'batch details',status:true,data:data})
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong"})
+    }
+}
+const batchUsers=async(req,res)=>{
+    try {
+        let n=10
+        if(n==10){
+            throw new Error("errorrssrsrsdfdsf")
+        }
+        
+    } catch (error) {
+        console.log(error)
+        console.log(error.message)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
 /**********************************************************************************************************************************************************************************************************************/
 
@@ -597,7 +722,12 @@ module.exports = {
     addcompanySubadmin,
     companySubadminList,
     getcompanysubadmin,
-    addeditBatch
+    addeditBatch,
+    getbatchlist,
+    batchStatus,
+    getBatchDetails,
+    batchUsers
+
 
 
 }
@@ -661,3 +791,27 @@ module.exports = {
 
             // let snapshots=await admin.firestore().collection("companies").where("access","==","App User").get()
             // snapshots.docs.map((doc)=>doc.ref.delete())
+
+
+            //////////***************************************************************batch creation original code written by me */
+        //     let today=moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        //     let filterdate=moment().subtract(data.date,"months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        //     let idofbatch
+        //    await admin.firestore().collection("batch").add(data).then((docRef)=>{
+        //         idofbatch=docRef.id
+        //         return docRef.update({_id:docRef.id})
+        //     })
+        //     let userdatas=[]
+        //    await admin.firestore().collection("UserNode").where("joindate",">=",filterdate).get().then((snapshot)=>{
+        //         snapshot.forEach((doc)=>{
+        //             userdatas.push(doc.data())
+        //         })
+        //     })  
+        //     let userids=userdatas.map(x=>x._id)
+        //     for(let id of userids){
+        //         admin.firestore().collection("userbatch").add({userid:id,batchid:idofbatch}).then((docref)=>{
+        //             return docref.update({_id:docref.id})
+        //         })
+        //     }
+        //     res.send({message:"batch created",status:true})
+        
