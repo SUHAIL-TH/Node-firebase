@@ -34,8 +34,8 @@ adminRouter.post('/bluckuploaduser', upload.single('file'),adminController.bulku
 
 adminRouter.post("/batchaddedit",adminController.addeditBatch)
 adminRouter.post("/batchlist",adminController.getbatchlist)
-// adminRouter.post("/batchstatus",adminController.batchStatus)
-// adminRouter.post("/getbatchdetails",adminController.getBatchDetails)
-// adminRouter.post("/batchusers",adminController.batchUsers)
+adminRouter.post("/batchstatus",adminController.batchStatus)
+adminRouter.post("/getbatchdetails",adminController.getBatchDetails)
+adminRouter.post("/batchusers",adminController.batchUsers)
 
 module.exports=adminRouter
