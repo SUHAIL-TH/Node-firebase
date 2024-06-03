@@ -742,7 +742,7 @@ const deletebathuser=async(req,res)=>{// for delete the batch users
 }
 
 
-const chagneBatchList=async(req,res)=>{
+const chagneBatchList=async(req,res)=>{//for getting the batch list
     try {
         let data=req.body
         // console.log(data);
@@ -764,7 +764,7 @@ const chagneBatchList=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
-const shiftBatch=async(req,res)=>{
+const shiftBatch=async(req,res)=>{//for shifiting the batch
     try {
         
     } catch (error) {
@@ -772,6 +772,7 @@ const shiftBatch=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
 
 /**********************************************************************************************************************************************************************************************************************/
 
