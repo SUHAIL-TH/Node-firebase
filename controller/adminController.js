@@ -297,7 +297,7 @@ const getUsersList = async (req, res) => {//for getting the userslist
          const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
         let data = [];
         snapshot.forEach((doc) => {
-            console.log(doc.id)
+            // console.log(doc.id)
             data.push({_id:doc.id,...doc.data()});
         });
 
@@ -535,9 +535,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
             if(data.date==="custom"){
                 const startdate = moment(data.datepicker[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
                 const endate=moment(data.datepicker[`1`]).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
-         
-
-              
+        
                 let bathref=await admin.firestore().collection('batch').add(data)
                 let companyRef=await admin.firestore().collection("companies").doc(data.companyid)
                 await companyRef.update({
@@ -551,6 +549,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
                 });
+
                 // console.log(userDatas)
                 let userIds = userDatas.map(x => x._id);
                 let batchPromises = userIds.map(async (id) => {
@@ -570,9 +569,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 await Promise.all(batchPromises);
 
                 res.send({message: "Batch created", status: true});
-                
-
-
+        
             }else{
                 
                 let today = moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
@@ -628,6 +625,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
     }
 }
 
+
 const getbatchlist=async(req,res)=>{//foir getting the batchlist
     try {
         // console.log(req.body)
@@ -669,7 +667,7 @@ const batchStatus=async(req,res)=>{//for updateing the status of the the batch
 }
 
 
-const getBatchDetails=async(req,res)=>{
+const getBatchDetails=async(req,res)=>{//for getting the batch details
     try {
         let {id}=req.body
         console.log(id);
@@ -684,16 +682,93 @@ const getBatchDetails=async(req,res)=>{
         res.status(500).send({message:"somthing went wrong"})
     }
 }
-const batchUsers=async(req,res)=>{
+
+
+const batchUsers=async(req,res)=>{//for getting the batch uses details
     try {
-        let n=10
-        if(n==10){
-            throw new Error("errorrssrsrsdfdsf")
+        let bathusers=[]
+
+        try {
+            let snapshot = await admin.firestore().collection("userbatch").where("batchid", "==", req.body.id).get();
+        
+            // Use Promise.all to wait for all asynchronous operations to complete
+            let userPromises = snapshot.docs.map(async (doc) => {
+                let query = admin.firestore().collection("UserNode").doc(doc.data().userid);
+        
+                // Adjusted the query logic for potential where clause
+                if (req.body.search) {
+                    let userRef = await query.get();
+                    let userData = userRef.data();
+                    if (userData.username === req.body.search) {
+                        return userData;
+                    }
+                    return null; // Return null if the user does not match the search criteria
+                } else { 
+                    let userRef = await query.get();
+                    return userRef.data();
+                }
+            });
+        
+            bathusers = (await Promise.all(userPromises)).filter(user => user !== null); // Filter out any null values
+            let count = bathusers.length;
+            
+            res.send({ message: "batch users list", data: bathusers, status: true, count: count });
+        } catch (error) {
+            console.error("Error retrieving users: ", error);
+            res.status(500).send({ message: "Error retrieving users", status: false, error: error.message });
         }
+        
         
     } catch (error) {
         console.log(error)
         console.log(error.message)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+const deletebathuser=async(req,res)=>{// for delete the batch users
+   try {
+    console.log(req.body)
+    let snapshot=await admin.firestore().collection("userbatch").where("userid","==",req.body.ids[0]).get()
+    snapshot.forEach((doc)=>{
+        doc.ref.delete()
+    })
+    res.send({message:"Action successfull",status:true})
+   } catch (error) {
+    console.log(error)
+    res.status(500).send({message:"somthing went wrong",status:false})
+   }
+}
+
+
+const chagneBatchList=async(req,res)=>{
+    try {
+        let data=req.body
+        // console.log(data);
+     
+        let batchRef=await admin.firestore().collection("batch").where("companyid","==","Wn6xOeXZ0RPTEiZeNXVv").where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
+        let batchslist=[]
+        batchRef.forEach((doc)=>{
+            batchslist.push(doc.data())
+        })
+        let currentuserBatch = await admin.firestore().collection("userbatch").where("userid", "==", data._id).get();
+        let result = currentuserBatch.docs[0].data();
+     
+        let current=await admin.firestore().collection("batch").where("_id","==",result.batchid).get()
+        let ress=current.docs[0].data()
+        let batchlist=batchslist.filter(x=>x._id!==result.batchid)
+        res.status(200).send({message:"batch lists",currentbatch:ress,batchlist:batchlist,status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+const shiftBatch=async(req,res)=>{
+    try {
+        
+    } catch (error) {
+        console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
@@ -726,11 +801,16 @@ module.exports = {
     getbatchlist,
     batchStatus,
     getBatchDetails,
-    batchUsers
-
-
-
+    batchUsers,
+    deletebathuser,
+    chagneBatchList,
+    shiftBatch
 }
+
+
+
+
+
 
 
             // const snapshot = await admin.firestore().collection("subAdmins").where("_id", "==", data._id).get();
