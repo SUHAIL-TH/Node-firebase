@@ -37,5 +37,8 @@ adminRouter.post("/batchlist",adminController.getbatchlist)
 adminRouter.post("/batchstatus",adminController.batchStatus)
 adminRouter.post("/getbatchdetails",adminController.getBatchDetails)
 adminRouter.post("/batchusers",adminController.batchUsers)
+adminRouter.post("/deletebathuser",adminController.deletebathuser)
+adminRouter.post("/changebatchlist",adminController.chagneBatchList)
+adminRouter.post("/shiftbatch",adminController.shiftBatch)
 
 module.exports=adminRouter
