@@ -559,7 +559,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                     // .where("batchid", "==", idOfBatch)
                 
                 if (userBatchSnapshot.empty) {
-                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idofBatch});
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idofBatch,companyid:data.companyid});
                     await userBatchRef.update({_id: userBatchRef.id});
                 }
     
@@ -604,7 +604,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                     // .where("batchid", "==", idOfBatch)
                     
                 if (userBatchSnapshot.empty) {
-                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idOfBatch});
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idOfBatch,companyid:data.companyid});
                     await userBatchRef.update({_id: userBatchRef.id});
                 }
                 });
@@ -729,25 +729,25 @@ const batchUsers=async(req,res)=>{//for getting the batch uses details
 
 const deletebathuser=async(req,res)=>{// for delete the batch users
    try {
-    console.log(req.body)
-    let snapshot=await admin.firestore().collection("userbatch").where("userid","==",req.body.ids[0]).get()
-    snapshot.forEach((doc)=>{
-        doc.ref.delete()
-    })
-    res.send({message:"Action successfull",status:true})
-   } catch (error) {
-    console.log(error)
-    res.status(500).send({message:"somthing went wrong",status:false})
-   }
+        console.log(req.body)
+        let snapshot=await admin.firestore().collection("userbatch").where("userid","==",req.body.ids[0]).get()
+        snapshot.forEach((doc)=>{
+            doc.ref.delete()
+        })
+        res.send({message:"Action successfull",status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
 }
 
 
-const chagneBatchList=async(req,res)=>{//for getting the batch list
+const chagneBatchList=async(req,res)=>{
     try {
         let data=req.body
-        // console.log(data);
+        console.log(data);
      
-        let batchRef=await admin.firestore().collection("batch").where("companyid","==","Wn6xOeXZ0RPTEiZeNXVv").where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
+        let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
         let batchslist=[]
         batchRef.forEach((doc)=>{
             batchslist.push(doc.data())
@@ -764,15 +764,96 @@ const chagneBatchList=async(req,res)=>{//for getting the batch list
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
-const shiftBatch=async(req,res)=>{//for shifiting the batch
+
+const shiftBatch=async(req,res)=>{
     try {
-        
+       let snapshot= await admin.firestore().collection("userbatch").where("userid","==",req.body.userid).get()
+        snapshot.forEach((doc)=>{
+            doc.ref.update({batchid:req.body.batchid})
+        })
+        res.status(200).send({message:"batch shfited succesfully",status:true})
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
 
+const profileData=async(req,res)=>{
+    try {
+        let data=req.body
+        let docRef=await admin.firestore().collection("UserNode").where("access","==",data.type).get()
+        let result=docRef.docs[0].data()
+        res.status(200).send({message:"admin details",status:true,data:result})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const updateprofile=async(req,res)=>{
+    try {
+        let data=req.body
+        let docRef=await admin.firestore().collection("UserNode").where("access","==","Admin").get()
+        docRef.forEach((doc)=>{
+            doc.ref.update(data)
+        })
+        res.send({message:"update successfully",status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somting went wrong",status:false})
+    }
+}
+
+
+
+const adduserbatchlist=async(req,res)=>{
+    try {
+        let data=req.body
+        let userList=[]
+        let batchusers=[]
+        let snapshot=(await admin.firestore().collection("batch").doc(data.batchid).get()).data()
+        let userDoc=await admin.firestore().collection("UserNode").where("companyid","==",snapshot.companyid).get().then((snapshot)=>{
+            snapshot.forEach((doc)=>{
+                userList.push(doc.data())
+            })
+        })
+
+        let batchuserslist=await admin.firestore().collection("userbatch").where("companyid","==",snapshot.companyid).get().then((result)=>{
+            result.forEach((doc)=>{
+                batchusers.push(doc.data())
+            })
+        })
+        let ids=batchusers.map(x=>x.userid)
+       
+        const filteredArray = userList.filter(obj => !ids.includes(obj._id));
+        res.status(200).send({message:"user list",status:true,data:filteredArray,companyid:snapshot.companyid})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong", status:false})
+    }
+}
+
+
+
+// const addUserToBatch=async(req,res)=>{
+//     try {
+       
+//         let {data,batchid,companyid}=req.body
+//         console.log(data);
+//         console.log(batchid);
+//         console.log(companyid);
+//         for(let i=0;i<data.length;i++){
+//             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
+//             await userbatch.update({_id:userbatch.id})
+//         }
+//         res.status(200).send({message:"add user to batch",status:true})
+        
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somthing went wrong ",status:false})
+//     }
+// }
 
 /**********************************************************************************************************************************************************************************************************************/
 
@@ -805,7 +886,11 @@ module.exports = {
     batchUsers,
     deletebathuser,
     chagneBatchList,
-    shiftBatch
+    shiftBatch,
+    profileData,
+    updateprofile,
+    adduserbatchlist,
+    addUserToBatch
 }
 
 
