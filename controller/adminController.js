@@ -742,7 +742,7 @@ const deletebathuser=async(req,res)=>{// for delete the batch users
 }
 
 
-const chagneBatchList=async(req,res)=>{
+const chagneBatchList=async(req,res)=>{//for listing the change branch in dropdown
     try {
         let data=req.body
         console.log(data);
@@ -765,7 +765,7 @@ const chagneBatchList=async(req,res)=>{
     }
 }
 
-const shiftBatch=async(req,res)=>{
+const shiftBatch=async(req,res)=>{//for shfiting the branch
     try {
        let snapshot= await admin.firestore().collection("userbatch").where("userid","==",req.body.userid).get()
         snapshot.forEach((doc)=>{
@@ -778,7 +778,7 @@ const shiftBatch=async(req,res)=>{
     }
 }
 
-const profileData=async(req,res)=>{
+const profileData=async(req,res)=>{//for getting the profile data
     try {
         let data=req.body
         let docRef=await admin.firestore().collection("UserNode").where("access","==",data.type).get()
@@ -790,7 +790,7 @@ const profileData=async(req,res)=>{
     }
 }
 
-const updateprofile=async(req,res)=>{
+const updateprofile=async(req,res)=>{//for updating the profile
     try {
         let data=req.body
         let docRef=await admin.firestore().collection("UserNode").where("access","==","Admin").get()
@@ -806,7 +806,7 @@ const updateprofile=async(req,res)=>{
 
 
 
-const adduserbatchlist=async(req,res)=>{
+const adduserbatchlist=async(req,res)=>{//for a user to batch list dropdown
     try {
         let data=req.body
         let userList=[]
@@ -836,7 +836,7 @@ const adduserbatchlist=async(req,res)=>{
 
 
 
-const addUserToBatch=async(req,res)=>{
+const addUserToBatch=async(req,res)=>{//for adding a user to bath
     try {
        
         let {data,batchid,companyid}=req.body
