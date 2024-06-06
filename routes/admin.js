@@ -1,8 +1,11 @@
 const express=require("express")
-
 const adminRouter=express()
 const adminController=require("../controller/adminController")
 const { upload } = require("../middleware/multer");
+const companyController=require("../controller/companyController")
+
+
+
 /****************************************************Admin routes */
 
 // adminRouter.post("/login",adminController.postLogin)
@@ -45,5 +48,12 @@ adminRouter.post("/profiledetails",adminController.profileData)
 adminRouter.post("/updateprofile",adminController.updateprofile)
 adminRouter.post("/batchadduserlist",adminController.adduserbatchlist)
 adminRouter.post("/addusertobatch",adminController.addUserToBatch)
+
+// **********************************************************************************************Company admin apies
+
+adminRouter.post("/company/userslist",companyController.comUserList)
+adminRouter.post("/company/adduser",companyController.comAddEditUser)
+adminRouter.post("/company/bulkuserupload", upload.single('file'),companyController.comBulkUserUpload)
+
 
 module.exports=adminRouter
