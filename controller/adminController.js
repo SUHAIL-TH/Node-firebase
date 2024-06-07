@@ -574,7 +574,6 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                     userDatas.push(doc.data());
                 });
 
-                // console.log(userDatas)
                 let userIds = userDatas.map(x => x._id);
                 let batchPromises = userIds.map(async (id) => {
                     let userBatchSnapshot = await admin.firestore().collection("userbatch")
@@ -652,7 +651,6 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
 
 const getbatchlist=async(req,res)=>{//foir getting the batchlist
     try {
-        // console.log(req.body)
         let batchlist=[]
         
         let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
@@ -698,7 +696,6 @@ const getBatchDetails=async(req,res)=>{//for getting the batch details
         let docRef=await admin.firestore().collection('batch').doc(id).get()
         let data=docRef.data()
         data._id=docRef.id
-        // console.log(data)
         res.status(200).send({message:'batch details',status:true,data:data})
         
     } catch (error) {
@@ -868,8 +865,6 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
        
         let {data,batchid,companyid}=req.body
         console.log(data);
-        // console.log(batchid);
-        // console.log(companyid);
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
