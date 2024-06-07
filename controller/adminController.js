@@ -147,7 +147,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
         const snapshot = await query.get();
         if (!snapshot.empty) {
             await Promise.all(snapshot.docs.map(doc => doc.ref.delete()));
-            // console.log("deleted");
+           
             res.send({message: "Subadmin deleted successfully", status: true});
         } else {
            
@@ -377,7 +377,7 @@ const addedituser=async(req,res)=>{//for add and edititng the user
 
 const getuserDetails=async(req,res)=>{//for get user details
     try {
-        console.log("herte")
+        
         console.log(req.body)
         let id=req.body.id
         let docRef=await  admin.firestore().collection("UserNode").doc(id).get()
@@ -482,7 +482,7 @@ const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companie
         data.webaccess="1"
         if(action==="create"){
             admin.firestore().collection("UserNode").add(data).then((docRef)=>{
-                // console.log(result)
+        
                 return docRef.update({_id:docRef.id}) //this is used to add the id to the document we have created in firebase
             }).then((result)=>{
                 console.log(result)
@@ -511,7 +511,6 @@ const companySubadminList=async(req,res)=>{//for getting the compnay subadmin li
         let query = admin.firestore().collection("UserNode").where('access', '==', 'companysubadmin').where('status',"in",["1","2"]);
         
         if (req.body.search) {
-            // console.log(req.body.search)
             query = query.where("name", "==", req.body.search);
         }
         const count = (await query.get()).size
