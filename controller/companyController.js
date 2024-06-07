@@ -5,8 +5,7 @@ const firebbase = require("firebase-admin")
 
 
 
-const comUserList=async(req,res)=>{//for getting the list of  company users
-
+const comUserList=async(req,res)=>{//for getting the company user list
     try {
         let {limit,skip,company}=req.body
         let userlist=[]
@@ -36,7 +35,7 @@ const comUserList=async(req,res)=>{//for getting the list of  company users
 }
 
 
-const comAddEditUser=async(req,res)=>{//for adding and editing the company users
+const comAddEditUser=async(req,res)=>{//for adding and editing the user to company  
     try {
         let actiontype=req.body.actiontype  
         delete req.body.actiontype
@@ -70,8 +69,7 @@ const comAddEditUser=async(req,res)=>{//for adding and editing the company users
 }
 
 
-const comBulkUserUpload=async(req,res)=>{//for bulk uploading the users from the companny
-    
+const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from company
     try {
           console.log("reached here");
         let file=req.file
