@@ -568,7 +568,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 let idofBatch=bathref.id
                 await bathref.update({_id:idofBatch})
 
-                let snapshot= await admin.firestore().collection("UserNode").where("joindate", ">=", startdate).where("joindate","<=",endate).where("city","==",data.city).get();
+                let snapshot= await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", startdate).where("joindate","<=",endate).where("city","==",data.city).where("status","in",["1","2"]).get();
                 let userDatas = [];
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
@@ -610,7 +610,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 await batchRef.update({_id: idOfBatch});
 
                  // Fetch user data based on the filter date
-                let snapshot = await admin.firestore().collection("UserNode").where("joindate", ">=", filterDate).where("city","==",data.city).get();
+                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", filterDate).where("city","==",data.city).where("status","in",["1","2"]).get();
                 
                 let userDatas = [];
                 snapshot.forEach(doc => {
@@ -771,7 +771,8 @@ const chagneBatchList=async(req,res)=>{//for getting the specific company change
         let data=req.body
         console.log(data);
      
-        let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
+        // let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
+        let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).get()
         let batchslist=[]
         batchRef.forEach((doc)=>{
             batchslist.push(doc.data())
@@ -838,7 +839,8 @@ const adduserbatchlist=async(req,res)=>{//listing the user of specific compnay t
         let userList=[]
         let batchusers=[]
         let snapshot=(await admin.firestore().collection("batch").doc(data.batchid).get()).data()
-        let userDoc=await admin.firestore().collection("UserNode").where("companyid","==",snapshot.companyid).get().then((snapshot)=>{
+        
+        let userDoc=await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",snapshot.companyid).where("city","==",snapshot.city).get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
                 userList.push(doc.data())
             })
@@ -866,8 +868,8 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
        
         let {data,batchid,companyid}=req.body
         console.log(data);
-        console.log(batchid);
-        console.log(companyid);
+        // console.log(batchid);
+        // console.log(companyid);
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
