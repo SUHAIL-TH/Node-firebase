@@ -35,24 +35,30 @@ const comUserList=async(req,res)=>{//for getting the company user list
 }
 
 
-const comAddEditUser=async(req,res)=>{//for adding and editing the user to company  
+const comAddEditUser=async(req,res)=>{//for adding and editing the user to compgit pany  
     try {
         let actiontype=req.body.actiontype  
         delete req.body.actiontype
         let data=req.body
         data.access="App User"
         if(actiontype==="create"){
-            data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
-            admin.firestore().collection("UserNode").add(data)
-            .then((dodRef)=>{
-                return dodRef.update({_id:dodRef.id})
-            }).then((result)=>{
-                console.log(result);
-                res.send({message:"user added successfully",status:true})
-            }).catch((error)=>{
-                console.log(error);
-                res.status(500).send({message:"somnthing went wrong",status:false})
-            })
+            let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).get()
+            let result=phonecheck.docs.length
+            if(result===0){
+                data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+                admin.firestore().collection("UserNode").add(data)
+                .then((dodRef)=>{
+                    return dodRef.update({_id:dodRef.id})
+                }).then((result)=>{
+                    console.log(result);
+                    res.send({message:"user added successfully",status:true})
+                }).catch((error)=>{
+                    console.log(error);
+                    res.status(500).send({message:"somnthing went wrong",status:false})
+                })
+            }else{
+                res.send({message:"Phone number already exsisted",status:false})
+            }
         }else if(actiontype=="edit"){
             admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
                 res.status(200).send({message:'updated successfully',status:true})
@@ -93,18 +99,24 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
             data.company=companyname
             data.companyid=req.body.companyid
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
-            console.log(data)
-            if(citylist.includes(data.city.toLowerCase())){
-
-                try {
-                    let result=await admin.firestore().collection("UserNode").add(data)
-                    return { success: true, id: result.id };
-                } catch (error) {   
-                    count++
-                    return {success:false,error:error}
-                }
-            }else{
+            let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
+            let phoneexsist=userPhone.docs.length
+            if(phoneexsist>0){
                 count++
+            }else{
+                if(citylist.includes(data.city.toLowerCase())){
+
+                    try {
+    
+                        let result=await admin.firestore().collection("UserNode").add(data)
+                        return { success: true, id: result.id };
+                    } catch (error) {   
+                        count++
+                        return {success:false,error:error}
+                    }
+                }else{
+                    count++
+                }
             }
 
         });
@@ -117,8 +129,110 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
     }
 }
 
+const addeditBatch=async(req,res)=>{
+    try {
+        let action=req.body.actiontype
+        delete req.body.actiontype
+        let data=req.body
+        
+        if(action==="create"){
+            
+            if(data.date==="custom"){
+                const startdate = moment(data.datepicker[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                const endate=moment(data.datepicker[`1`]).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        
+                let bathref=await admin.firestore().collection('batch').add(data)
+                let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
+                await companyRef.update({
+                    batchcount:firebbase.firestore.FieldValue.increment(1)
+                })
+                let idofBatch=bathref.id
+                await bathref.update({_id:idofBatch})
+
+                let snapshot= await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", startdate).where("joindate","<=",endate).where("city","==",data.city).where("status","in",["1","2"]).get();
+                let userDatas = [];
+                snapshot.forEach(doc => {
+                    userDatas.push(doc.data());
+                });
+
+                // console.log(userDatas)
+                let userIds = userDatas.map(x => x._id);
+                let batchPromises = userIds.map(async (id) => {
+                    let userBatchSnapshot = await admin.firestore().collection("userbatch")
+                    .where("userid", "==", id)
+                    .get();
+                    // .where("batchid", "==", idOfBatch)
+                
+                if (userBatchSnapshot.empty) {
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idofBatch,companyid:data.companyid});
+                    await userBatchRef.update({_id: userBatchRef.id});
+                }
+    
+                });
+
+                // Wait for all batchPromises to resolve
+                await Promise.all(batchPromises);
+
+                res.send({message: "Batch created", status: true});
+        
+            }else{
+                
+                let today = moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let filterDate = moment().subtract(data.date, "months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        
+                // Add a new batch and get its ID
+                data.createAt=firebbase.firestore.FieldValue.serverTimestamp()//this is used to create the timestamp
+                let batchRef = await admin.firestore().collection("batch").add(data);
+                let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
+                await companyRef.update({
+                    batchcount:firebbase.firestore.FieldValue.increment(1)
+                })
+                let idOfBatch = batchRef.id;
+                await batchRef.update({_id: idOfBatch});
+
+                 // Fetch user data based on the filter date
+                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", filterDate).where("city","==",data.city).where("status","in",["1","2"]).get();
+                
+                let userDatas = [];
+                snapshot.forEach(doc => {
+                    userDatas.push(doc.data());
+                });
+
+                // Map user IDs from the user data
+                let userIds = userDatas.map(x => x._id);
+
+                // Add userbatch documents for each user
+                let batchPromises = userIds.map(async (id) => {
+                    let userBatchSnapshot = await admin.firestore().collection("userbatch")
+                    .where("userid", "==", id)
+                    .get();
+                    // .where("batchid", "==", idOfBatch)
+                    
+                if (userBatchSnapshot.empty) {
+                    let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idOfBatch,companyid:data.companyid});
+                    await userBatchRef.update({_id: userBatchRef.id});
+                }
+                });
+                // Wait for all batchPromises to resolve
+                await Promise.all(batchPromises);
+
+                res.send({message: "Batch created", status: true});
+            }
+        }else if(action==="update"){
+            console.log(req.body)
+            await admin.firestore().collection("batch").doc(data._id).update(data)
+            res.status(200).send({message:"updated successfully",status:true})
+
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
 module.exports={
     comUserList,
     comAddEditUser,
-    comBulkUserUpload
+    comBulkUserUpload,
+    addeditBatch
 }
