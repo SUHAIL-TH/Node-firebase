@@ -881,9 +881,6 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     try {
        
         let {data,batchid,companyid}=req.body
-        console.log(data);
-        // console.log(batchid);
-        // console.log(companyid);
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
