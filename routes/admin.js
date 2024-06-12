@@ -59,4 +59,6 @@ adminRouter.post("/company/addbatch",companyController.addeditBatch)
 
 //*******************************************************************************common routes for company and admin */
 
+
+
 module.exports=adminRouter
