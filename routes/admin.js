@@ -54,6 +54,9 @@ adminRouter.post("/addusertobatch",adminController.addUserToBatch)
 adminRouter.post("/company/userslist",companyController.comUserList)
 adminRouter.post("/company/adduser",companyController.comAddEditUser)
 adminRouter.post("/company/bulkuserupload", upload.single('file'),companyController.comBulkUserUpload)
+adminRouter.post("/company/addbatch",companyController.addeditBatch)
 
+
+//*******************************************************************************common routes for company and admin */
 
 module.exports=adminRouter
