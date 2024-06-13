@@ -954,7 +954,7 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     }
 }
 
-const deletedUserslist=async(req,res)=>{
+const deletedUserslist=async(req,res)=>{//for getting the list of deleted users
     try {
         console.log("request reached here");
         let userRef=await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()
