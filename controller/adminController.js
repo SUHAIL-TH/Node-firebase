@@ -159,6 +159,30 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
     }
 }
 
+const permanentDeleteUser=async(req,res)=>{
+    try {
+        console.log(req.body)
+        // cos
+        let docRef=await admin.firestore().collection("UserNode").doc(req.body.ids[0]).delete()
+        res.send({message:"UserDeleted Successfully",status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const restoreUser=async(req,res)=>{
+    try {
+        let userRef= admin.firestore().collection("UserNode").doc(req.body.ids)
+       await  userRef.update({
+            status:"1"
+        })
+        res.send({message:"User restored",status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
 const companyList = async (req,res)=>{// for getting the company list
     try {
@@ -204,6 +228,7 @@ const addeditcompany = async (req, res) => { //for adding and editing companies
         }
         if(type==="create"){
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+            data.activeuserscount=0
             const docRef = await admin.firestore().collection("UserNode").add(data)
             // .then((result)=>{
             //     if(result){
@@ -295,8 +320,23 @@ const companyStatus = async (req,res)=>{//for upating the company status
 
 
 const getUsersList = async (req, res) => {//for getting the userslist
-    try {   
-        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",["1","2"]);
+    try {  
+        let status=[]
+        if(req.body.status===3){
+            status=["1","2"]
+        }else if(req.body.status===1){
+            status=["1"]
+        }else if(req.body.status===2){
+            status=["2"]
+        }else if(req.body.status===0){
+            status=["0"]
+        }
+
+        let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","in",["1","2"]).get()).size
+        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
+        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
+        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
+        let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",status);
         
         if (req.body.search) {
             console.log(req.body.search)
@@ -311,7 +351,7 @@ const getUsersList = async (req, res) => {//for getting the userslist
             data.push({_id:doc.id,...doc.data()});
         });
 
-        res.status(200).send({ data, count, message: "Users fetched successfully", status: true });
+        res.status(200).send({ data, count, message: "Users fetched successfully", status: true ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount});
     } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Something went wrong", status: false });
@@ -341,7 +381,6 @@ const getcompanynames=async(req,res)=>{//for getting the companynames
 
 
 const addedituser=async(req,res)=>{//for add and edititng the user
-    console.log(req.body)
     try {
         let actiontype=req.body.actiontype  
         delete req.body.actiontype
@@ -350,7 +389,14 @@ const addedituser=async(req,res)=>{//for add and edititng the user
         if(actiontype==="create"){
             let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).get()
             let result=phonecheck.docs.length
-            if(result===0){
+            let companyRef = admin.firestore().collection("UserNode").doc(data.companyid);
+            let companySnapshot = await companyRef.get();
+            let companyData = companySnapshot.data();
+           if(companyData.activeuserscount<companyData.activeusers){
+             if(result===0){
+                await companyRef.update({
+                    activeuserscount:firebbase.firestore.FieldValue.increment(1)
+                })
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
                 admin.firestore().collection("UserNode").add(data)
                 .then((dodRef)=>{
@@ -365,14 +411,26 @@ const addedituser=async(req,res)=>{//for add and edititng the user
             }else{
                 res.send({message:"Phone number already exsisted",status:false})
             }
-        
+           }else{
+            res.send({message:"Max active user limit reached",status:false})
+           }
+
         }else if(actiontype=="edit"){
+            console.log(req.body)
+            let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).where("_id","!=",data._id).get()
+            let count=phonecheck.size
+            console.log(count);
+            if(count<=0){
             admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
                 res.status(200).send({message:'updated successfully',status:true})
-
+                
             }).catch((error)=>{
                 res.status(500).send({message:"somthing went wrong",status:false})
             })
+
+            }else{
+                res.send({message:"Phone number already exsisted",status:false})
+            }
 
         }
     } catch (error) {
@@ -663,7 +721,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
 }
 
 
-const getbatchlist=async(req,res)=>{//foir getting the batchlist
+const getbatchlist=async(req,res)=>{//for getting the batchlist
     try {
         // console.log(req.body)
         let batchlist=[]
@@ -881,6 +939,9 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     try {
        
         let {data,batchid,companyid}=req.body
+        console.log(data);
+        // console.log(batchid);
+        // console.log(companyid);
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
@@ -890,6 +951,21 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong ",status:false})
+    }
+}
+
+const deletedUserslist=async(req,res)=>{
+    try {
+        console.log("request reached here");
+        let userRef=await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()
+        let deletedUser=[]
+        userRef.forEach((doc=>{
+            deletedUser.push(doc.data())
+        }))
+        console.log(deletedUser)
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",statsu:false})
     }
 }
 
@@ -929,7 +1005,10 @@ module.exports = {
     profileData,
     updateprofile,
     adduserbatchlist,
-    addUserToBatch
+    addUserToBatch,
+    deletedUserslist,
+    permanentDeleteUser,
+    restoreUser
 }
 
 
