@@ -159,7 +159,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
     }
 }
 
-const permanentDeleteUser=async(req,res)=>{
+const permanentDeleteUser=async(req,res)=>{//for permanent deleting the user
     try {
         console.log(req.body)
         // cos
@@ -171,7 +171,7 @@ const permanentDeleteUser=async(req,res)=>{
     }
 }
 
-const restoreUser=async(req,res)=>{
+const restoreUser=async(req,res)=>{//for restoring the user form soft delete
     try {
         let userRef= admin.firestore().collection("UserNode").doc(req.body.ids)
        await  userRef.update({
@@ -337,7 +337,6 @@ const getUsersList = async (req, res) => {//for getting the userslist
         let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
         let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
         let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",status);
-        
         if (req.body.search) {
             console.log(req.body.search)
             query = query.where("username", "==", req.body.search);
@@ -510,6 +509,7 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
             data.status="1"
             data.mobile=data.mobile.toString()
             data.company=companyname
+            data.city=data.city.toLowerCase()
             data.companyid=req.body.companyid
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
@@ -522,6 +522,7 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
                     try {
     
                         let result=await admin.firestore().collection("UserNode").add(data)
+                        await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
                         return { success: true, id: result.id };
                     } catch (error) {   
                         count++
@@ -766,11 +767,9 @@ const batchStatus=async(req,res)=>{//for updateing the status of the the batch
 const getBatchDetails=async(req,res)=>{//for getting the batch details
     try {
         let {id}=req.body
-        console.log(id);
         let docRef=await admin.firestore().collection('batch').doc(id).get()
         let data=docRef.data()
         data._id=docRef.id
-        // console.log(data)
         res.status(200).send({message:'batch details',status:true,data:data})
         
     } catch (error) {
@@ -779,7 +778,7 @@ const getBatchDetails=async(req,res)=>{//for getting the batch details
     }
 }
 
-const batchUsers = async (req, res) => {
+const batchUsers = async (req, res) => {//for getting the batch users list
     try {
         const { id, skip = 0, limit = 10, search = '' } = req.body;
 
@@ -818,9 +817,6 @@ const batchUsers = async (req, res) => {
         res.status(500).send({ message: "Error retrieving users", status: false, error: error.message });
     }
 };
-
-
-
 
 
 const deletebathuser=async(req,res)=>{// for delete the batch users
@@ -954,7 +950,7 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     }
 }
 
-const deletedUserslist=async(req,res)=>{//for getting the list of deleted users
+const deletedUserslist=async(req,res)=>{//fot getting the delted users list
     try {
         console.log("request reached here");
         let userRef=await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()
