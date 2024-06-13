@@ -2,7 +2,8 @@ const express=require("express")
 const adminRouter=express()
 const adminController=require("../controller/adminController")
 const { upload } = require("../middleware/multer");
-const companyController=require("../controller/companyController")
+const companyController=require("../controller/companyController");
+    
 
 
 
@@ -16,6 +17,8 @@ adminRouter.post("/getsubadmin",adminController.subAdminslist)
 adminRouter.post("/addsubadmin",adminController.createUpdateSubAdmin)
 adminRouter.post("/editsubadmin",adminController.getSubadmin)
 adminRouter.post("/deletesubadmin",adminController.deleteSubAdmin)
+adminRouter.post("/permanentdeleteuser",adminController.permanentDeleteUser)
+adminRouter.post("/restoreuser",adminController.restoreUser)
 
 
 adminRouter.post("/companeylist",adminController.companyList)
@@ -48,6 +51,7 @@ adminRouter.post("/profiledetails",adminController.profileData)
 adminRouter.post("/updateprofile",adminController.updateprofile)
 adminRouter.post("/batchadduserlist",adminController.adduserbatchlist)
 adminRouter.post("/addusertobatch",adminController.addUserToBatch)
+adminRouter.get('/deleteduserslist',adminController.deletedUserslist)
 
 // **********************************************************************************************Company admin apies
 
@@ -58,7 +62,5 @@ adminRouter.post("/company/addbatch",companyController.addeditBatch)
 
 
 //*******************************************************************************common routes for company and admin */
-
-
 
 module.exports=adminRouter
