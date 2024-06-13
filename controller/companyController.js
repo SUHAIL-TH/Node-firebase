@@ -9,18 +9,32 @@ const comUserList=async(req,res)=>{//for getting the company user list
     try {
         let {limit,skip,company}=req.body
         let userlist=[]
-        console.log(req.body);
+        let status=[]
+        if(req.body.status===3){
+            status=["1","2"]
+        }else if(req.body.status===1){
+            status=["1"]
+        }else if(req.body.status===2){
+            status=["2"]
+        }else if(req.body.status===0){
+            status=["0"]
+        }
         if(company._id){
-            let query= admin.firestore().collection("UserNode").where("companyid","==",company._id).where("status","in",["1","2"])
+            let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","in",["1","2"]).get()).size
+            let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
+            let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
+            let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
+            let query= admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","in",status)
             if(req.body.search){
                 query=query.where("username","==",req.body.search)
             }
+            let size=(await query.get()).size
             let snapshot= query.offset(skip).limit(limit).orderBy('createAt',"desc").get().then((snapshot)=>{
                 snapshot.forEach((doc)=>{
                     userlist.push(doc.data())
                 })
                 console.log(userlist)
-                res.status(200).send({message:"user List",status:true,data:userlist})
+                res.status(200).send({message:"user List",status:true,data:userlist,count:size,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount})
             }).catch((error)=>{
                 console.log(error)
                 res.status(500).send({message:"somthing went wrong",status:false})
@@ -30,7 +44,7 @@ const comUserList=async(req,res)=>{//for getting the company user list
         }
     } catch (error) {
         console.log(error);
-        res.status(500).send({message:"somthing went wrong",status:false})
+        res.status(500).send({message:"somthing went wrong",status:false,})
     }
 }
 
@@ -44,7 +58,15 @@ const comAddEditUser=async(req,res)=>{//for adding and editing the user to compg
         if(actiontype==="create"){
             let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).get()
             let result=phonecheck.docs.length
-            if(result===0){
+            let companyRef = admin.firestore().collection("UserNode").doc(data.companyid);
+            let companySnapshot = await companyRef.get();
+            let companyData = companySnapshot.data();
+           if(companyData.activeuserscount<companyData.activeusers){
+             if(result===0){
+                console.log("here we have reached")
+                await companyRef.update({
+                    activeuserscount:firebbase.firestore.FieldValue.increment(1)
+                })
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
                 admin.firestore().collection("UserNode").add(data)
                 .then((dodRef)=>{
@@ -59,13 +81,27 @@ const comAddEditUser=async(req,res)=>{//for adding and editing the user to compg
             }else{
                 res.send({message:"Phone number already exsisted",status:false})
             }
+           }else{
+            res.send({message:"Max active user limit reached",status:false})
+           }
+           
+        
         }else if(actiontype=="edit"){
+            console.log(req.body)
+            let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).where("_id","!=",data._id).get()
+            let count=phonecheck.size
+            console.log(count);
+            if(count<=0){
             admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
                 res.status(200).send({message:'updated successfully',status:true})
-
+                
             }).catch((error)=>{
                 res.status(500).send({message:"somthing went wrong",status:false})
             })
+
+            }else{
+                res.send({message:"Phone number already exsisted",status:false})
+            }
 
         }
     } catch (error) {
@@ -109,6 +145,7 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
                     try {
     
                         let result=await admin.firestore().collection("UserNode").add(data)
+                        await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
                         return { success: true, id: result.id };
                     } catch (error) {   
                         count++
