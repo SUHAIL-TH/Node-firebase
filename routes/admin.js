@@ -3,6 +3,7 @@ const adminRouter=express()
 const adminController=require("../controller/adminController")
 const { upload } = require("../middleware/multer");
 const companyController=require("../controller/companyController");
+const commonController=require("../controller/commonController")
     
 
 
@@ -53,14 +54,30 @@ adminRouter.post("/batchadduserlist",adminController.adduserbatchlist)
 adminRouter.post("/addusertobatch",adminController.addUserToBatch)
 adminRouter.get('/deleteduserslist',adminController.deletedUserslist)
 
+adminRouter.post("/addedittrainer",adminController.addeditTrainer)
+adminRouter.post("/trainerslist",adminController.trainersList)
+adminRouter.post("/updatetrainerstatus",adminController.updateTrainerStatus)
+adminRouter.post("/deletetrainer",adminController.deleteTrainer)
+
 // **********************************************************************************************Company admin apies
 
 adminRouter.post("/company/userslist",companyController.comUserList)
 adminRouter.post("/company/adduser",companyController.comAddEditUser)
 adminRouter.post("/company/bulkuserupload", upload.single('file'),companyController.comBulkUserUpload)
 adminRouter.post("/company/addbatch",companyController.addeditBatch)
+// adminRouter.post("/company",companyController.company)
+
+adminRouter.post("/company/trainers/",companyController.companyTrainers)
+adminRouter.post("/company/addeditcompany",companyController.addeditCompany)
+
 
 
 //*******************************************************************************common routes for company and admin */
+adminRouter.post("/common/profiledata",commonController.profileData)
+adminRouter.post("/common/updateprofile",commonController.profileUpdate)
+
+
+
+
 
 module.exports=adminRouter
