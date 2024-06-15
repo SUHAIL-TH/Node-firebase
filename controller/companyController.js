@@ -267,9 +267,90 @@ const addeditBatch=async(req,res)=>{
     }
 }
 
+// const company=async(req,res)=>{
+//     try {
+//         console.log(req.body)
+        
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somthing went wrong",status:false})
+//     }
+// }
+
+const companyTrainers=async(req,res)=>{
+    try {
+        let skip = req.body.skip ?? 0;
+        let limit = req.body.limit ?? 10;
+        let search = req.body.search;
+        let status = [];
+
+        if (req.body.status === 3) {
+            status = ["1", "2"];
+        } else if (req.body.status === 1) {
+            status = ["1"];
+        } else if (req.body.status === 2) {
+            status = ["2"];
+        } else if (req.body.status === 0) {
+            status = ["0"];
+        }
+
+        let allcount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("companyid","==",req.body.company._id).where("status","in",["1","2"]).get()).size
+        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("companyid","==",req.body.company._id).where("status","==","1").get()).size
+        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("companyid","==",req.body.company._id).where("status","==","2").get()).size
+        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("companyid","==",req.body.company._id).where("status","==","0").get()).size
+        let trainerList = [];
+        let docQuery = admin.firestore().collection("UserNode")
+            .where("access", "==", "Trainer Login").where("companyid","==",req.body.company._id)
+            .where("status", "in", status);
+
+        if (search) {
+            docQuery = docQuery.where("slugname", "==", search);
+        }
+
+        let snapshot = await docQuery.offset(skip).limit(limit).get();                                  //here the below code want to be used for the getting the order in des of addignt to database
+         // let snapshot = await docQuery.offset(skip).limit(limit).orderBy("createAt",'desc').get();
+        let size=snapshot.size
+        snapshot.forEach((doc) => {
+            trainerList.push(doc.data());
+        });
+
+        res.send({ message: "Trainers fetched successfully", status: true, data: trainerList,count:size ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount});
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const addeditCompany=async(req,res)=>{
+    try {
+      console.log(req.body)  
+      let action=req.body.actiontype
+      delete req.body.actiontype
+      let data=req.body
+      if(action==="create"){
+          data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+      let trainerRef= await admin.firestore().collection("UserNode").add(data)
+      let docref=await admin.firestore().collection("UserNode").doc(trainerRef.id)
+      await docref.update({_id:trainerRef.id})
+      res.send({message:"Trainer added Successfully", status:true,})
+      }else{
+          let docref=await admin.firestore().collection("UserNode").doc(req.body._id)
+          await docref.update(data)
+          res.send({message:"Updated successfully", status:true})
+      }
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
 module.exports={
     comUserList,
     comAddEditUser,
     comBulkUserUpload,
-    addeditBatch
+    addeditBatch,
+    companyTrainers,
+    addeditCompany
+
 }
