@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 app.use("/public/images",express.static(__dirname+"public/images"))  
 
-// app.use(morgan("dev"))
+app.use(morgan("dev"))
 app.use("/",adminRoutes)
 
 app.listen(4000,()=>{
