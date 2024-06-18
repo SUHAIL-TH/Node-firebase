@@ -4,7 +4,7 @@ const adminController=require("../controller/adminController")
 const { upload } = require("../middleware/multer");
 const companyController=require("../controller/companyController");
 const commonController=require("../controller/commonController")
-    
+const trainerController=require("../controller/trainerController")
 
 
 
@@ -53,6 +53,7 @@ adminRouter.post("/updateprofile",adminController.updateprofile)
 adminRouter.post("/batchadduserlist",adminController.adduserbatchlist)
 adminRouter.post("/addusertobatch",adminController.addUserToBatch)
 adminRouter.get('/deleteduserslist',adminController.deletedUserslist)
+adminRouter.post("/batchcompaneylist",adminController.batchCompanyList)
 
 adminRouter.post("/addedittrainer",adminController.addeditTrainer)
 adminRouter.post("/trainerslist",adminController.trainersList)
@@ -65,8 +66,6 @@ adminRouter.post("/company/userslist",companyController.comUserList)
 adminRouter.post("/company/adduser",companyController.comAddEditUser)
 adminRouter.post("/company/bulkuserupload", upload.single('file'),companyController.comBulkUserUpload)
 adminRouter.post("/company/addbatch",companyController.addeditBatch)
-// adminRouter.post("/company",companyController.company)
-
 adminRouter.post("/company/trainers/",companyController.companyTrainers)
 adminRouter.post("/company/addeditcompany",companyController.addeditCompany)
 
@@ -76,7 +75,9 @@ adminRouter.post("/company/addeditcompany",companyController.addeditCompany)
 adminRouter.post("/common/profiledata",commonController.profileData)
 adminRouter.post("/common/updateprofile",commonController.profileUpdate)
 
+//*****************************************************************************************trainer routes */
 
+adminRouter.post("/trainer/userlist",trainerController.trainerUserList)
 
 
 
