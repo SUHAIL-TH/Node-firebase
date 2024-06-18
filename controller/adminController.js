@@ -4,7 +4,8 @@
 const XLSX  =require("xlsx");
 const moment=require("moment")
 const {admin}=require("../config/firebaseConfig")
-const firebbase = require("firebase-admin")
+const firebbase = require("firebase-admin");
+const { doc } = require("firebase/firestore");
 
 
 // admin.initializeApp({
@@ -159,6 +160,7 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
     }
 }
 
+
 const permanentDeleteUser=async(req,res)=>{//for permanent deleting the user
     try {
         console.log(req.body)
@@ -170,6 +172,7 @@ const permanentDeleteUser=async(req,res)=>{//for permanent deleting the user
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
 
 const restoreUser=async(req,res)=>{//for restoring the user form soft delete
     try {
@@ -184,16 +187,32 @@ const restoreUser=async(req,res)=>{//for restoring the user form soft delete
     }
 }
 
+
 const companyList = async (req,res)=>{// for getting the company list
     try {
+        console.log(req.body)
+        let status=[]
+        if(req.body.status===3){
+            status=["1","2"]
+        }else if(req.body.status===1){
+            status=["1"]
+        }else if(req.body.status===2){
+            status=["2"]
+        }else if(req.body.status===0){
+            status=["0"]
+        }
         let data=[]
-        let collectionRef=admin.firestore().collection("UserNode").where('access',"==","company").where("status","in",["1","2"])
+        let collectionRef=admin.firestore().collection("UserNode").where('access',"==","company").where("status","in",status)
         if(req.body.search){
             let search=req.body.search.toLowerCase()
             collectionRef=collectionRef.where("slugname","==",search)
         }
         let snapshotCount=await collectionRef.get()
         let count=snapshotCount.size; 
+        let allcount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","in",["1","2"]).get()).size
+        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","1").get()).size
+        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","2").get()).size
+        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","0").get()).size
         collectionRef=collectionRef.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc'); //here want to add orderBy also to sort the document
         collectionRef.get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
@@ -201,13 +220,46 @@ const companyList = async (req,res)=>{// for getting the company list
                 insertdata._id=doc.id
                 data.push(insertdata)
             })
-            res.status(200).send({message:"companies list ",status:true,data:data,count:count})
+            console.log(allcount,activecoutn,inactivecount,deletecount);
+            res.status(200).send({message:"companies list ",status:true,data:data,count:count ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount})
         }).catch((error)=>{
             console.log(error)
             res.status(500).send({message:"somthing went wrong",status:false})
         })
 
 
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+const batchCompanyList=async(req,res)=>{
+    try {
+       console.log(req.body)
+        let data=[]
+        let collectionRef=admin.firestore().collection("UserNode").where('access',"==","company").where("status","in",["1"])
+        if(req.body.search){
+            let search=req.body.search.toLowerCase()
+            collectionRef=collectionRef.where("slugname","==",search)
+        }
+        let snapshotCount=await collectionRef.get()
+        let count=snapshotCount.size; 
+     
+        collectionRef=collectionRef.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc'); //here want to add orderBy also to sort the document
+        collectionRef.get().then((snapshot)=>{
+            snapshot.forEach((doc)=>{
+                let insertdata=doc.data()
+                insertdata._id=doc.id
+                data.push(insertdata)
+            })
+           
+            res.status(200).send({message:"companies list ",status:true,data:data,count:count })
+        }).catch((error)=>{
+            console.log(error)
+            res.status(500).send({message:"somthing went wrong",status:false})
+        })
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
@@ -682,7 +734,9 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 await batchRef.update({_id: idOfBatch});
 
                  // Fetch user data based on the filter date
-                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", filterDate).where("city","==",data.city).where("status","in",["1","2"]).get();
+                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid)
+                .where("joindate", ">=", filterDate).where("city","==",data.city)
+                .where("status","in",["1","2"]).get();
                 
                 let userDatas = [];
                 snapshot.forEach(doc => {
@@ -724,7 +778,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
 
 const getbatchlist=async(req,res)=>{//for getting the batchlist
     try {
-        // console.log(req.body)
+        console.log(req.body)
         let batchlist=[]
         
         let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
@@ -777,6 +831,7 @@ const getBatchDetails=async(req,res)=>{//for getting the batch details
         res.status(500).send({message:"somthing went wrong"})
     }
 }
+
 
 const batchUsers = async (req, res) => {//for getting the batch users list
     try {
@@ -935,9 +990,6 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     try {
        
         let {data,batchid,companyid}=req.body
-        console.log(data);
-        // console.log(batchid);
-        // console.log(companyid);
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
@@ -949,6 +1001,7 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
         res.status(500).send({message:"somthing went wrong ",status:false})
     }
 }
+
 
 const deletedUserslist=async(req,res)=>{//fot getting the delted users list
     try {
@@ -964,6 +1017,109 @@ const deletedUserslist=async(req,res)=>{//fot getting the delted users list
         res.status(500).send({message:"somthing went wrong",statsu:false})
     }
 }
+
+
+const addeditTrainer=async(req,res)=>{//for adding and editing the trainer
+    try {
+        console.log(req.body)
+        let action=req.body.actiontype
+        delete req.body.actiontype
+        let data=req.body
+        if(action==="create"){
+            data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+        let trainerRef= await admin.firestore().collection("UserNode").add(data)
+        let docref=await admin.firestore().collection("UserNode").doc(trainerRef.id)
+        await docref.update({_id:trainerRef.id})
+        res.send({message:"Trainer added Successfully", status:true,})
+        }else{
+            
+            let docref=await admin.firestore().collection("UserNode").doc(req.body._id)
+            await docref.update(data)
+            res.send({message:"Updated successfully", status:true})
+        }
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing ",status:false})
+    }
+}
+
+
+const trainersList = async (req, res) => {//for getting the trainers list
+    try {
+        let skip = req.body.skip ?? 0;
+        let limit = req.body.limit ?? 10;
+        let search = req.body.search;
+        let status = [];
+
+        if (req.body.status === 3) {
+            status = ["1", "2"];
+        } else if (req.body.status === 1) {
+            status = ["1"];
+        } else if (req.body.status === 2) {
+            status = ["2"];
+        } else if (req.body.status === 0) {
+            status = ["0"];
+        }
+
+        let allcount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","in",["1","2"]).get()).size
+        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","1").get()).size
+        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","2").get()).size
+        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","0").get()).size
+        let trainerList = [];
+        let docQuery = admin.firestore().collection("UserNode")
+            .where("access", "==", "Trainer Login")
+            .where("status", "in", status);
+
+        if (search) {
+            docQuery = docQuery.where("slugnam", "==", search);
+        }
+
+        let snapshot = await docQuery.offset(skip).limit(limit).get();                                  //here the below code want to be used for the getting the order in des of addignt to database
+         // let snapshot = await docQuery.offset(skip).limit(limit).orderBy("createAt",'desc').get();
+        let size=snapshot.size
+        snapshot.forEach((doc) => {
+            trainerList.push(doc.data());
+        });
+
+        // console.log(trainerList);
+
+        res.send({ message: "Trainers fetched successfully", status: true, data: trainerList,count:size ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount});
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: "Something went wrong", status: false });
+    }
+};
+
+
+
+const updateTrainerStatus=async(req,res)=>{//this is for updateing the trainer status
+    try {
+        let {id,status}=req.body
+        let docRef=await admin.firestore().collection("UserNode").doc(id)
+        await docRef.update({status:status})
+        res.send({message:"Updated Successfully",status:true})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"Somthing went wrong",status:false})
+    }
+}
+
+
+const deleteTrainer=async(req,res)=>{//this is for deleting the trainer
+    try {
+        console.log(req.body)
+        let id=req.body.ids[0]
+        let docRef=await admin.firestore().collection("UserNode").doc(id).update({status:"0"})
+        res.send({message:"Deleted Successfully", status:true})
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
 
 
 /**********************************************************************************************************************************************************************************************************************/
@@ -1004,7 +1160,13 @@ module.exports = {
     addUserToBatch,
     deletedUserslist,
     permanentDeleteUser,
-    restoreUser
+    restoreUser,
+    addeditTrainer,
+    trainersList,
+    updateTrainerStatus,
+    deleteTrainer,
+    batchCompanyList,
+    
 }
 
 
