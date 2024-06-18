@@ -21,9 +21,9 @@ const comUserList=async(req,res)=>{//for getting the company user list
         }
         if(company._id){
             let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","in",["1","2"]).get()).size
-            let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
-            let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
-            let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
+            let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","==","1").get()).size
+            let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","==","2").get()).size
+            let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","==","0").get()).size
             let query= admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","in",status)
             if(req.body.search){
                 query=query.where("username","==",req.body.search)
