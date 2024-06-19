@@ -1,13 +1,11 @@
-// const admin = require("firebase-admin")
-// const firebase=require('firebase')
-
 const XLSX  =require("xlsx");
 const moment=require("moment")
 const {admin}=require("../config/firebaseConfig")
 const firebbase = require("firebase-admin");
-const { doc } = require("firebase/firestore");
 
 
+// const admin = require("firebase-admin")
+// const firebase=require('firebase')
 // admin.initializeApp({
 //     credential: admin.credential.cert(serviceAccount)
 // })
@@ -449,6 +447,7 @@ const addedituser=async(req,res)=>{//for add and edititng the user
                     activeuserscount:firebbase.firestore.FieldValue.increment(1)
                 })
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+                data.profile="User"
                 admin.firestore().collection("UserNode").add(data)
                 .then((dodRef)=>{
                     return dodRef.update({_id:dodRef.id})
@@ -693,7 +692,9 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 let idofBatch=bathref.id
                 await bathref.update({_id:idofBatch})
 
-                let snapshot= await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", startdate).where("joindate","<=",endate).where("city","==",data.city).where("status","in",["1","2"]).get();
+                let snapshot= await admin.firestore().collection("UserNode").where("access","==","App User")
+                .where("companyid","==",data.companyid).where("joindate", ">=", startdate).where("joindate","<=",endate)
+                .where("city","==",data.city).where("status","in",["1","2"]).get();
                 let userDatas = [];
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
