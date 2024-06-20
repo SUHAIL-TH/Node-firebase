@@ -192,7 +192,6 @@ const addeditBatch=async(req,res)=>{
                     userDatas.push(doc.data());
                 });
 
-                // console.log(userDatas)
                 let userIds = userDatas.map(x => x._id);
                 let batchPromises = userIds.map(async (id) => {
                     let userBatchSnapshot = await admin.firestore().collection("userbatch")
@@ -207,9 +206,7 @@ const addeditBatch=async(req,res)=>{
     
                 });
 
-                // Wait for all batchPromises to resolve
-                await Promise.all(batchPromises);
-
+                await Promise.all(batchPromises);  // Wait for all batchPromises to resolve
                 res.send({message: "Batch created", status: true});
         
             }else{
@@ -218,7 +215,7 @@ const addeditBatch=async(req,res)=>{
                 let filterDate = moment().subtract(data.date, "months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
         
                 // Add a new batch and get its ID
-                data.createAt=firebbase.firestore.FieldValue.serverTimestamp()//this is used to create the timestamp
+                data.createAt=firebbase.firestore.FieldValue.serverTimestamp()   //this is used to create the timestamp
                 let batchRef = await admin.firestore().collection("batch").add(data);
                 let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
                 await companyRef.update({
@@ -228,7 +225,9 @@ const addeditBatch=async(req,res)=>{
                 await batchRef.update({_id: idOfBatch});
 
                  // Fetch user data based on the filter date
-                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid).where("joindate", ">=", filterDate).where("city","==",data.city).where("status","in",["1","2"]).get();
+                let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User")
+                            .where("companyid","==",data.companyid).where("joindate", ">=", filterDate)
+                            .where("city","==",data.city).where("status","in",["1","2"]).get();
                 
                 let userDatas = [];
                 snapshot.forEach(doc => {
