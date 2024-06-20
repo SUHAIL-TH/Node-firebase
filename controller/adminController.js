@@ -506,20 +506,49 @@ const getuserDetails=async(req,res)=>{//for get user details
 }
 
 
-const userStatus=async(req,res)=>{//for change the user status
+const userStatus = async (req, res) => { //for updating the status of the user and changing the count of the active users for the company at the same time
+
     try {
-        let {id,status}=req.body
-        console.log(id,status)
-        admin.firestore().collection("UserNode").doc(id).update({status:status}).then((result)=>{
-            res.status(200).send({message:'status updated',status:true})
-        }).catch((error)=>{
-            res.status(500).send({message:"somthing went wrong",status:false})
-        })
+        let { id, status } = req.body;
+
+        const userDocRef = admin.firestore().collection("UserNode").doc(id);
+
+        await admin.firestore().runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+
+            if (!userDoc.exists) {
+                throw new Error("User document does not exist!");
+            }
+
+            const companyId = userDoc.data().companyid;
+            const companyDocRef = admin.firestore().collection("UserNode").doc(companyId);
+
+            const companyDoc = await transaction.get(companyDocRef);
+
+            if (!companyDoc.exists) {
+                throw new Error("Company document does not exist!");
+            }
+
+            const activeuserscount = companyDoc.data().activeuserscount; 
+            if(status==2){//here we update the number of the active users according to the status we want to change
+
+                transaction.update(companyDocRef, { activeuserscount: activeuserscount - 1 });
+            }else{
+                transaction.update(companyDocRef, { activeuserscount: activeuserscount + 1 });
+
+            }
+
+        });
+
+        await admin.firestore().collection("UserNode").doc(id).update({ status: status });
+
+        res.status(200).send({ message: 'status updated', status: true });
     } catch (error) {
-        console.log(error)
-        res.status(500).send({message:"somthing went wrong",status:false})
+        console.log(error);
+        res.status(500).send({ message: "something went wrong", status: false });
     }
-}
+};
+
 
 
 const deleteUser=async(req,res)=>{//for delete the user only change the status to 0=delete 1=active 2=indactive
@@ -942,6 +971,25 @@ const profileData=async(req,res)=>{//for getting the profile data  of admin
 }
 
 
+// const updateprofile=async(req,res)=>{//for updateing the profile of admin
+//     try {
+//         let data=req.body
+//         let docRef=await admin.firestore().collection("UserNode").where("access","==","Admin").get()
+//         docRef.forEach((doc)=>{
+//             doc.ref.update(data)
+//         })
+//         let adminid=await docRef.docs[0].data()._id
+//         console.log(adminid)
+//         let admindata=(await admin.firestore().collection("UserNode").doc(adminid).get()).data()
+        
+//         res.send({message:"update successfully",status:true,data:admindata})
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somting went wrong",status:false})
+//     }
+// }
+
+
 const updateprofile=async(req,res)=>{//for updateing the profile of admin
     try {
         let data=req.body
@@ -949,7 +997,11 @@ const updateprofile=async(req,res)=>{//for updateing the profile of admin
         docRef.forEach((doc)=>{
             doc.ref.update(data)
         })
-        res.send({message:"update successfully",status:true})
+        let adminid=await docRef.docs[0].data()._id
+        console.log(adminid)
+        let admindata=(await admin.firestore().collection("UserNode").doc(adminid).get()).data()
+        
+        res.send({message:"update successfully",status:true,data:admindata})
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somting went wrong",status:false})
