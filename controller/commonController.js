@@ -29,10 +29,8 @@ const profileUpdate=async(req,res)=>{
         let {_id}=req.body
         console.log(req.body)
         let docdata=await admin.firestore().collection("UserNode").doc(_id)
-        // console.log((await docdata.get()).data())
         await docdata.update(req.body)
         let responseData= (await admin.firestore().collection('UserNode').doc(_id).get()).data()
-        // console.log(responseData)
         let accesss=responseData.access
         res.send({message:"updated successfully",status:true,data:responseData,access:accesss})
     } catch (error) {
