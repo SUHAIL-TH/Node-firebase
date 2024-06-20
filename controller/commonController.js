@@ -8,7 +8,7 @@ const { doc } = require("firebase/firestore");
 const profileData=async(req,res)=>{
     try {
         let {id,type}=req.body
-        console.log(req.body)
+        // console.log(req.body)
         let data=(await admin.firestore().collection("UserNode").doc(id).get()).data()
         let companycity=(await admin.firestore().collection("UserNode").doc(data.companyid).get()).data().city
         
@@ -26,11 +26,15 @@ const profileData=async(req,res)=>{
 
 const profileUpdate=async(req,res)=>{
     try {
-        let {id}=req.body
+        let {_id}=req.body
         console.log(req.body)
-        let docdata=await admin.firestore().collection("UserNode").doc(id)
+        let docdata=await admin.firestore().collection("UserNode").doc(_id)
+        // console.log((await docdata.get()).data())
         await docdata.update(req.body)
-        
+        let responseData= (await admin.firestore().collection('UserNode').doc(_id).get()).data()
+        // console.log(responseData)
+        let accesss=responseData.access
+        res.send({message:"updated successfully",status:true,data:responseData,access:accesss})
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong ",status:false})
