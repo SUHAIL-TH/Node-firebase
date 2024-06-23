@@ -177,6 +177,15 @@ const addeditBatch=async(req,res)=>{
             if(data.date==="custom"){
                 const startdate = moment(data.datepicker[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
                 const endate=moment(data.datepicker[`1`]).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let companyShort = data.company.slice(0, 2).toUpperCase();   
+                let cityShort = data.city.slice(0, 2).toUpperCase();  
+                let teamShort = data.team.map(item => item.slice(0, 2)).join('').toUpperCase();  
+                let roleShort = data.role.map(item => item.slice(0, 2)).join('').toUpperCase(); 
+                let todaydata = new Date().toISOString().slice(5, 10).replace(/-/g, '-');
+
+
+                let shortname = `${companyShort}${cityShort}${teamShort}${roleShort}_${todaydata}`;
+                data.shortname=shortname
         
                 let bathref=await admin.firestore().collection('batch').add(data)
                 let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
@@ -213,6 +222,15 @@ const addeditBatch=async(req,res)=>{
                 
                 let today = moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
                 let filterDate = moment().subtract(data.date, "months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let companyShort = data.company.slice(0, 2).toUpperCase();   
+                let cityShort = data.city.slice(0, 2).toUpperCase();  
+                let teamShort = data.team.map(item => item.slice(0, 2)).join('').toUpperCase();  
+                let roleShort = data.role.map(item => item.slice(0, 2)).join('').toUpperCase(); 
+                let todaydata = new Date().toISOString().slice(5, 10).replace(/-/g, '-');
+
+
+                let shortname = `${companyShort}${cityShort}${teamShort}${roleShort}_${todaydata}`;
+                data.shortname=shortname
         
                 // Add a new batch and get its ID
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()   //this is used to create the timestamp
