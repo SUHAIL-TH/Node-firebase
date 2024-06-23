@@ -712,6 +712,15 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
             if(data.date==="custom"){
                 const startdate = moment(data.datepicker[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
                 const endate=moment(data.datepicker[`1`]).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+                let companyShort = data.company.slice(0, 2).toUpperCase();   
+                let cityShort = data.city.slice(0, 2).toUpperCase();  
+                let teamShort = data.team.map(item => item.slice(0, 2)).join('').toUpperCase();  
+                let roleShort = data.role.map(item => item.slice(0, 2)).join('').toUpperCase(); 
+                let todaydata = new Date().toISOString().slice(5, 10).replace(/-/g, '-');
+
+
+                let shortname = `${companyShort}${cityShort}${teamShort}${roleShort}_${todaydata}`;
+                data.shortname=shortname
         
                 let bathref=await admin.firestore().collection('batch').add(data)
                 let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
@@ -752,8 +761,18 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 
                 let today = moment().endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
                 let filterDate = moment().subtract(data.date, "months").startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
-        
+                let batchdata=req.body
+                let companyShort = data.company.slice(0, 2).toUpperCase();   
+                let cityShort = data.city.slice(0, 2).toUpperCase();  
+                let teamShort = data.team.map(item => item.slice(0, 2)).join('').toUpperCase();  
+                let roleShort = data.role.map(item => item.slice(0, 2)).join('').toUpperCase(); 
+                let todaydata = new Date().toISOString().slice(5, 10).replace(/-/g, '-');
+
+
+                let shortname = `${companyShort}${cityShort}${teamShort}${roleShort}_${todaydata}`;
+                data.shortname=shortname
                 // Add a new batch and get its ID
+             
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()//this is used to create the timestamp
                 let batchRef = await admin.firestore().collection("batch").add(data);
                 let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
@@ -808,7 +827,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
 
 const getbatchlist=async(req,res)=>{//for getting the batchlist
     try {
-        console.log(req.body)
+        // console.log(req.body)
         let batchlist=[]
         
         let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
@@ -817,7 +836,7 @@ const getbatchlist=async(req,res)=>{//for getting the batchlist
         }
         const count = (await query.get()).size
         
-         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc').get();
         snapshot.forEach((doc)=>{
             batchlist.push(doc.data())
         })
@@ -850,9 +869,9 @@ const batchStatus=async(req,res)=>{//for updateing the status of the the batch
 
 const getBatchDetails=async(req,res)=>{//for getting the batch details
     try {
-        let {id}=req.body
-        let docRef=await admin.firestore().collection('batch').doc(id).get()
-        let data=docRef.data()
+        const {id}=req.body
+        const docRef=await admin.firestore().collection('batch').doc(id).get()
+        const data=docRef.data()
         data._id=docRef.id
         res.status(200).send({message:'batch details',status:true,data:data})
         
