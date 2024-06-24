@@ -78,6 +78,7 @@ adminRouter.post("/common/updateprofile",commonController.profileUpdate)
 //*****************************************************************************************trainer routes */
 
 adminRouter.post("/trainer/userlist",trainerController.trainerUserList)
+adminRouter.post("/trainer/company",trainerController.trainercompanyData)
 
 
 
