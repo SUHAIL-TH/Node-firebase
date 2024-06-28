@@ -11,7 +11,7 @@ const trainerController=require("../controller/trainerController")
 /****************************************************Admin routes */
 
 
-// adminRouter.post("/login",adminController.postLogin)
+adminRouter.post("/login",adminController.postLogin)
 adminRouter.post("/role_check",adminController.roleCheck)
 
 
