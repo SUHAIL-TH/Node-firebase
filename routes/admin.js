@@ -14,7 +14,6 @@ const trainerController=require("../controller/trainerController")
 adminRouter.post("/login",adminController.postLogin)
 adminRouter.post("/role_check",adminController.roleCheck)
 
-
 adminRouter.post("/getsubadmin",adminController.subAdminslist)
 adminRouter.post("/addsubadmin",adminController.createUpdateSubAdmin)
 adminRouter.post("/editsubadmin",adminController.getSubadmin)
