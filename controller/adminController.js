@@ -1184,6 +1184,10 @@ const profileData=async(req,res)=>{//for getting the profile data  of admin
 }
 
 
+
+
+
+
 // const updateprofile=async(req,res)=>{//for updateing the profile of admin
 //     try {
 //         let data=req.body
