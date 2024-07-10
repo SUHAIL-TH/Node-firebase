@@ -751,7 +751,7 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
             let phoneexsist=userPhone.docs.length
             
-            if(data.hasOwnProperty("__EMPTY")){
+            if(data.hasOwnProperty("__EMPTY")){//use to remove the empty values when it comes inside of the xcel sheet
                 
                 count++
             }else{
@@ -1182,11 +1182,6 @@ const profileData=async(req,res)=>{//for getting the profile data  of admin
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
-
-
-
-
-
 
 // const updateprofile=async(req,res)=>{//for updateing the profile of admin
 //     try {
