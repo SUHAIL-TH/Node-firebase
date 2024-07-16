@@ -26,7 +26,10 @@ const comUserList=async(req,res)=>{//for getting the company user list
             let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","==","0").get()).size
             let query= admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",company._id).where("status","in",status)
             if(req.body.search){
-                query=query.where("username","==",req.body.search)
+                let searchTerm=req.body.search.toLowerCase()
+                query = query.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
+                // query=query.where("username","==",req.body.search)
             }
             let size=(await query.get()).size
             let snapshot= query.offset(skip).limit(limit).orderBy('createAt',"desc").get().then((snapshot)=>{
@@ -115,7 +118,7 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
     try {
           console.log("reached here");
         let file=req.file
-        console.log(req.body)
+        // console.log(req.body)    
         if(!file){
            return res.status(400).send({message:'no files is uploaded',status:false})
         }
@@ -124,6 +127,19 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
         const   worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+        if(jsonData.length===0){
+            return res.send({message:"Xcel sheet has no data",stats:false})
+        }
+        const requiredFields = ['username', 'email', 'mobile',"city","country"];
+        const header = Object.keys(jsonData[0] || {});
+        
+        const missingFields = requiredFields.filter(field => !header.includes(field));
+        
+        if (missingFields.length > 0) {
+            // console.log(`The sheet is missing the following required fields : ${missingFields.join(', ')}`);
+          return  res.send({message:`missing fields:${missingFields.join(", ")}`,status:false})
+           
+        }
         let docref=await admin.firestore().collection("UserNode").doc(req.body.companyid).get()
         let companyname=(await docref.data()).name
         let citylist=(await docref.data()).city
@@ -131,34 +147,43 @@ const comBulkUserUpload=async(req,res)=>{//for bulk uploading the user from comp
          let datasss=jsonData.map(async(data, index) => {
             data.access="App User"
             data.status="1"
+            data.joindate=req.body.joindate
             data.mobile=data.mobile.toString()
             data.company=companyname
+            data.city=data.city.toLowerCase()
+            data.country=data.country.toLowerCase()
             data.companyid=req.body.companyid
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
+        
             let phoneexsist=userPhone.docs.length
-            if(phoneexsist>0){
+            if(data.hasOwnProperty("__EMPTY")){
+                
                 count++
             }else{
-                if(citylist.includes(data.city.toLowerCase())){
-
-                    try {
-    
-                        let result=await admin.firestore().collection("UserNode").add(data)
-                        await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
-                        return { success: true, id: result.id };
-                    } catch (error) {   
-                        count++
-                        return {success:false,error:error}
-                    }
-                }else{
+                if(phoneexsist>0 ||data.mobile.length===10){
                     count++
+                }else{
+                    if(citylist.includes(data.city.toLowerCase())){
+    
+                        try {
+        
+                            let result=await admin.firestore().collection("UserNode").add(data)
+                            await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
+                            return { success: true, id: result.id };
+                        } catch (error) {   
+                            count++
+                            return {success:false,error:error}
+                        }
+                    }else{
+                        count++
+                    }
                 }
             }
 
         });
         let result= await Promise.all(datasss)//this is used to await until all the user are added to the firebase store and then only want to sent the response back to front end
-       
+       console.log(count    )
         res.send({message:"Upload completed",status:true,count:count})
     } catch (error) {
         console.log(error)
@@ -186,6 +211,7 @@ const addeditBatch=async(req,res)=>{
 
                 let shortname = `${companyShort}${cityShort}${teamShort}${roleShort}_${todaydata}`;
                 data.shortname=shortname
+                data.createAt=firebbase.firestore.FieldValue.serverTimestamp()//this is used to create the timestamp
         
                 let bathref=await admin.firestore().collection('batch').add(data)
                 let companyRef=await admin.firestore().collection("UserNode").doc(data.companyid)
@@ -200,6 +226,8 @@ const addeditBatch=async(req,res)=>{
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
                 });
+                let userCount=userData.length
+                await bathref.update({_id: idOfBatch,usercount:userCount});
 
                 let userIds = userDatas.map(x => x._id);
                 let batchPromises = userIds.map(async (id) => {
@@ -240,7 +268,7 @@ const addeditBatch=async(req,res)=>{
                     batchcount:firebbase.firestore.FieldValue.increment(1)
                 })
                 let idOfBatch = batchRef.id;
-                await batchRef.update({_id: idOfBatch});
+                // await batchRef.update({_id: idOfBatch});
 
                  // Fetch user data based on the filter date
                 let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User")
@@ -251,7 +279,8 @@ const addeditBatch=async(req,res)=>{
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
                 });
-
+                let userCount=userData.length
+                await bathref.update({_id: idOfBatch,usercount:userCount});
                 // Map user IDs from the user data
                 let userIds = userDatas.map(x => x._id);
 
