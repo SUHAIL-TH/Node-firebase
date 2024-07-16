@@ -2,6 +2,7 @@ const XLSX  =require("xlsx");
 const moment=require("moment")
 const {admin}=require("../config/firebaseConfig")
 const firebbase = require("firebase-admin");
+const SmptSchema =require("../model/stmpt")
 
 
 // const admin = require("firebase-admin")
@@ -26,7 +27,7 @@ const roleCheck = async (req, res) => { // used to check the role of the login a
         querySnapshot.forEach(doc => {
             userData.push(doc.data());
         });
-        console.log(userData[0]);
+        // console.log(userData[0]);
         res.send({ message: "successfull", data: userData[0], status: true })
     } catch (error) {
         console.log(error)
@@ -38,10 +39,10 @@ const roleCheck = async (req, res) => { // used to check the role of the login a
 const postLogin = async (req, res) => { // for login implemting login currenly not in use
     let email = req.body.email
     let password = req.body.password
-    console.log(email, password);
+    // console.log(email, password);
     try {
         const userRecord = await admin.auth().getUserByEmail(email)
-        console.log(userRecord);
+        // console.log(userRecord);
     } catch (error) {
         console.log(error)
         res.status(500).send({ message: "Somthing Went wrong", status: false })
@@ -131,12 +132,14 @@ const subAdminslist = async (req, res) => {
 const createUpdateSubAdmin = async(req, res) => {// for to add/update subadmin to the firestore
     try {
         const actiontype = req.body.actiontype; 
-        console.log(req.body);
+        // console.log(req.body);
         delete req.body.actiontype;
         let data =req.body
         data.webaccess="1"
+        data.username=req.body.name
+        data.slugname=req.body.name.toLowerCase()
      
-        console.log(data)
+        // console.log(data)
          if(actiontype==="create"){
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
             admin.firestore().collection('UserNode').add(data)
@@ -173,14 +176,7 @@ const getSubadmin = async (req, res) => {// for getting the subadmin details
         const doc = data.docs[0];
         const docData = doc.data();
         res.status(200).send({message:"sub admin data",status:true,data:docData})
-        // .then(snapshot=>{
-        //     snapshot.forEach((doc)=>{
-        //         console.log(doc)
-        //         res.send({message:"Sub admin details",status:true,data:doc.data()})
-        //     })
-        // }).catch((error)=>{
-        //     res.status(500).send({message:'somthing went wrong',status:false})
-        // })
+       
     } catch (error) {
         console.log(error)
         res.status(500).send({ message: "somthing went wrong", status: false })
@@ -208,18 +204,25 @@ const deleteSubAdmin = async (req,res)=>{ // for deleting the subadmin
     }
 }
 
-
-const permanentDeleteUser=async(req,res)=>{//for permanent deleting the user
+const permanentDeleteUser = async (req, res) => {
     try {
-        console.log(req.body)
-        // cos
-        let docRef=await admin.firestore().collection("UserNode").doc(req.body.ids[0]).delete()
-        res.send({message:"UserDeleted Successfully",status:true})
+        const userIds = req.body.ids;
+
+        if (!Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).send({ message: "Please select a user", status: false });
+        }
+
+        console.log(userIds);
+        await Promise.all(userIds.map(id => admin.firestore().collection("UserNode").doc(id).delete()));
+
+        res.send({ message: "User Deleted Successfully", status: true });
     } catch (error) {
-        console.log(error)
-        res.status(500).send({message:"somthing went wrong",status:false})
+        console.log(error);
+        res.status(500).send({ message: "Something went wrong", status: false });
     }
-}
+};
+
+
 
 
 const restoreUser=async(req,res)=>{//for restoring the user form soft delete
@@ -238,7 +241,7 @@ const restoreUser=async(req,res)=>{//for restoring the user form soft delete
 
 const companyList = async (req,res)=>{// for getting the company list
     try {
-        console.log(req.body)
+        // console.log(req.body)
         let status=[]
         if(req.body.status===3){
             status=["1","2"]
@@ -252,8 +255,10 @@ const companyList = async (req,res)=>{// for getting the company list
         let data=[]
         let collectionRef=admin.firestore().collection("UserNode").where('access',"==","company").where("status","in",status)
         if(req.body.search){
-            let search=req.body.search.toLowerCase()
-            collectionRef=collectionRef.where("slugname","==",search)
+            let searchTerm=req.body.search.toLowerCase()
+            // collectionRef=collectionRef.where("slugname","==",search)
+            collectionRef = collectionRef.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
         }
         let snapshotCount=await collectionRef.get()
         let count=snapshotCount.size; 
@@ -268,7 +273,7 @@ const companyList = async (req,res)=>{// for getting the company list
                 insertdata._id=doc.id
                 data.push(insertdata)
             })
-            console.log(allcount,activecoutn,inactivecount,deletecount);
+            // console.log(allcount,activecoutn,inactivecount,deletecount)
             res.status(200).send({message:"companies list ",status:true,data:data,count:count ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount})
         }).catch((error)=>{
             console.log(error)
@@ -285,12 +290,13 @@ const companyList = async (req,res)=>{// for getting the company list
 
 const batchCompanyList=async(req,res)=>{
     try {
-       console.log(req.body)
+    //    console.log(req.body)
         let data=[]
         let collectionRef=admin.firestore().collection("UserNode").where('access',"==","company").where("status","in",["1"])
         if(req.body.search){
-            let search=req.body.search.toLowerCase()
-            collectionRef=collectionRef.where("slugname","==",search)
+            let searchTerm=req.body.search.toLowerCase()
+            collectionRef = collectionRef.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
         }
         let snapshotCount=await collectionRef.get()
         let count=snapshotCount.size; 
@@ -343,10 +349,10 @@ const   addeditcompany = async (req, res) => { //for adding and editing companie
                  res.status(200).send({ message: "Company added", status: true, });
             })
         }else if(type==="update"){
-            console.log(req.body)
+            // console.log(req.body)
             let data=req.body
             let result=await admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
-                console.log(res)
+                // console.log(res)
                 res.send({message:"Update successully",status:true})
             }).catch((error)=>{
                 console.log(error)
@@ -364,15 +370,20 @@ const   addeditcompany = async (req, res) => { //for adding and editing companie
 
 const company_subadmin_Delete = async (req,res)=>{//for deleting the company
     try {
-        let id=req.body.ids[0]
-        if(id){
-            let docRef = admin.firestore().collection("UserNode").doc(id).update({status:"0"})
-            // await docRef.delete()
-            res.status(200).send({message:"company deleted",status:true})   
+        console.log("here i am mr suhail th")
+        console.log(req.body)
 
-        }else{
-            res.status(500).send({message:"invalide id",status:false})
-        }
+        let ids=req.body.ids
+        let batch=admin.firestore().batch()
+        ids.forEach((id)=>{
+            const batchref=admin.firestore().collection("UserNode").doc(id)
+            batch.update(batchref,{status:"0"})
+
+        })
+        await   batch.commit()
+
+        res.send({message:"deleted successfully",status:true})
+        
         
     } catch (error) {
         console.log(error)
@@ -383,7 +394,7 @@ const company_subadmin_Delete = async (req,res)=>{//for deleting the company
 
 const getCompany = async (req,res)=>{//for getting the companydetails one at a time
     try {
-        console.log(req.body);
+        // console.log(req.body);
         let id=req.body.data
         let docRef= await admin.firestore().collection("UserNode").doc(id).get()
         let data=docRef.data()
@@ -422,7 +433,7 @@ const companyStatus = async (req,res)=>{//for upating the company status
 
 const getUsersList = async (req, res) => {
     try {
-        console.log(req.body)
+        // console.log(req.body)
         let status = [];
         if (req.body.status === 3) {
             status = ["1", "2"];
@@ -551,14 +562,14 @@ const getUsersList = async (req, res) => {
 
 const getcompanynames=async(req,res)=>{//for getting the companynames
     try {
-        console.log("reached here")
+        // console.log("reached here")
         let data=[]
         admin.firestore().collection("UserNode").where("access","==","company").where("status","in",["1","2"]).get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
                 // console.log(doc.data())
                 data.push({_id:doc.id,...doc.data()})
             })
-            console.log(data)
+            // console.log(data)
             res.status(200).send({message:'compnay names',stauts:true,data:data})
         }).catch((error)=>{
             console.log(error)
@@ -593,7 +604,7 @@ const addedituser=async(req,res)=>{//for add and edititng the user
                 .then((dodRef)=>{
                     return dodRef.update({_id:dodRef.id})
                 }).then((result)=>{
-                    console.log(result);
+                    // console.log(result);
                     res.send({message:"user added successfully",status:true})
                 }).catch((error)=>{
                     console.log(error);
@@ -607,10 +618,10 @@ const addedituser=async(req,res)=>{//for add and edititng the user
            }
 
         }else if(actiontype=="edit"){
-            console.log(req.body)
+            // console.log(req.body)
             let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).where("_id","!=",data._id).get()
             let count=phonecheck.size
-            console.log(count);
+            // console.log(count);
             if(count<=0){
             admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
                 res.status(200).send({message:'updated successfully',status:true})
@@ -633,8 +644,8 @@ const addedituser=async(req,res)=>{//for add and edititng the user
 
 const getuserDetails=async(req,res)=>{//for get user details
     try {
-        console.log("herte")
-        console.log(req.body)
+        // console.log("herte")
+        // console.log(req.body)
         let id=req.body.id
         let docRef=await  admin.firestore().collection("UserNode").doc(id).get()
         let data=docRef.data()
@@ -692,25 +703,44 @@ const userStatus = async (req, res) => { //for updating the status of the user a
 
 
 
-const deleteUser=async(req,res)=>{//for delete the user only change the status to 0=delete 1=active 2=indactive
+// const deleteUser=async(req,res)=>{//for delete the user only change the status to 0=delete 1=active 2=indactive
+//     try {
+//         console.log(req.body)
+//         let id=req.body.ids[0]
+//         admin.firestore().collection("UserNode").doc(id).update({status:"0"}).then((result)=>{
+//             res.send({message:"deleted successfully",status:true})
+//         }).catch((error)=>{
+//             res.status(500).send({message:"somthing went wrong",status:false})
+//         })
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somthing went wrong",status:false})
+//     }
+// }
+
+const deleteUser = async (req, res) => {
     try {
-        console.log(req.body)
-        let id=req.body.ids[0]
-        admin.firestore().collection("UserNode").doc(id).update({status:"0"}).then((result)=>{
-            res.send({message:"deleted successfully",status:true})
-        }).catch((error)=>{
-            res.status(500).send({message:"somthing went wrong",status:false})
-        })
+        const ids = req.body.ids;
+        const batch = admin.firestore().batch();
+
+        ids.forEach(id => {
+            const userRef = admin.firestore().collection("UserNode").doc(id);
+            batch.update(userRef, { status: "0" });
+        });
+
+        await batch.commit();
+
+        res.send({ message: "deleted successfully", status: true });
     } catch (error) {
-        console.log(error)
-        res.status(500).send({message:"somthing went wrong",status:false})
+        console.error(error);
+        res.status(500).send({ message: "something went wrong", status: false });
     }
-}
+};
 
 
 const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     try {
-        console.log("reached here");
+        // console.log("reached here");
         let file=req.file
         if(!file){
            return res.status(400).send({message:'no files is uploaded',status:false})
@@ -728,8 +758,8 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
         const missingFields = requiredFields.filter(field => !header.includes(field));
         
         if (missingFields.length > 0) {
+            // console.log(`The sheet is missing the following required fields : ${missingFields.join(', ')}`);
           return  res.send({message:`missing fields:${missingFields.join(", ")}`,status:false})
-            console.log(`The sheet is missing the following required fields : ${missingFields.join(', ')}`);
            
         }
 
@@ -738,7 +768,7 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
         let citylist=(await docref.data()).city
         let count=0
          let datasss=jsonData.map(async(data, index) => {
-            console.log(data);
+            // console.log(data);
             data.access="App User"
             data.status="1"
             data.joindate=req.body.joindate
@@ -751,7 +781,7 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
             let phoneexsist=userPhone.docs.length
             
-            if(data.hasOwnProperty("__EMPTY")){//use to remove the empty values when it comes inside of the xcel sheet
+            if(data.hasOwnProperty("__EMPTY")){
                 
                 count++
             }else{
@@ -802,7 +832,7 @@ const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companie
                 // console.log(result)
                 return docRef.update({_id:docRef.id}) //this is used to add the id to the document we have created in firebase
             }).then((result)=>{
-                console.log(result)
+                // console.log(result)
                 res.send({messsage:"Added succusfully",status:true})
             }).catch((error)=>{
                 console.log(error)
@@ -836,7 +866,7 @@ const companySubadminList=async(req,res)=>{//for getting the compnay subadmin li
          const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
         let data = [];
         snapshot.forEach((doc) => {
-            console.log(doc.id)
+            // console.log(doc.id)
             data.push(doc.data());
         });
 
@@ -893,16 +923,17 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                     batchcount:firebbase.firestore.FieldValue.increment(1)
                 })
                 let idofBatch=bathref.id
-                await bathref.update({_id:idofBatch})
+                // await bathref.update({_id:idofBatch})
 
                 let snapshot= await admin.firestore().collection("UserNode").where("access","==","App User")
                 .where("companyid","==",data.companyid).where("joindate", ">=", startdate).where("joindate","<=",endate)
-                .where("city","==",data.city).where("status","in",["1","2"]).get();
+                .where("city","==",data.city).where("status","in",["1"]).get();
                 let userDatas = [];
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
                 });
-                
+                let userCount=userData.length
+                await bathref.update({_id: idOfBatch,usercount:userCount});
                 let userIds = userDatas.map(x => x._id);
                 let batchPromises = userIds.map(async (id) => {
                     let userBatchSnapshot = await admin.firestore().collection("userbatch")
@@ -950,13 +981,16 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                  // Fetch user data based on the filter date
                 let snapshot = await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",data.companyid)
                 .where("joindate", ">=", filterDate).where("city","==",data.city)
-                .where("status","in",["1","2"]).get();
+                .where("status","in",["1"]).get();
                 
                 let userDatas = [];
                 snapshot.forEach(doc => {
                     userDatas.push(doc.data());
                 });
-
+                let userCount=userDatas.length
+                
+                await batchRef.update({_id: idOfBatch,usercount:userCount});
+               
                 // Map user IDs from the user data
                 let userIds = userDatas.map(x => x._id);
 
@@ -978,7 +1012,7 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
                 res.send({message: "Batch created", status: true});
             }
         }else if(action==="update"){
-            console.log(req.body)
+            // console.log(req.body)
             await admin.firestore().collection("batch").doc(data._id).update(data)
             res.status(200).send({message:"updated successfully",status:true})
 
@@ -997,7 +1031,10 @@ const getbatchlist=async(req,res)=>{//for getting the batchlist
         
         let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
         if(req.body.search){
-           query= query.where("slugname","==",req.body.search)
+            let searchTerm=req.body.search.toLowerCase()
+        //    query= query.where("slugname","==",req.body.search)
+        query = query.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
         }
         const count = (await query.get()).size
         
@@ -1005,6 +1042,8 @@ const getbatchlist=async(req,res)=>{//for getting the batchlist
         snapshot.forEach((doc)=>{
             batchlist.push(doc.data())
         })
+        console.log(batchlist)
+        let batchusercoutnt=await admin.firestore().collection("batchuser")
         res.send({message:"batchlist",count:count,status:true,data:batchlist})
 
     } catch (error) {
@@ -1045,7 +1084,7 @@ const getbatchlist=async(req,res)=>{//for getting the batchlist
 
 const batchStatus=async(req,res)=>{//for updateing the status of the the batch
     try {
-        console.log(req.body);
+        // console.log(req.body);
         let {id,status}=req.body
          admin.firestore().collection("batch").doc(id).update({status:status}).then((result)=>{
             res.send({message:"status updated successfully",status:true})
@@ -1076,7 +1115,47 @@ const getBatchDetails=async(req,res)=>{//for getting the batch details
 }
 
 
-const batchUsers = async (req, res) => {//for getting the batch users list
+// const batchUsers = async (req, res) => {//for getting the batch users list
+//     try {
+//         const { id, skip = 0, limit = 10, search = '' } = req.body;
+
+//         if (!id) {
+//             return res.status(400).send({ message: "Batch ID is required", status: false });
+//         }
+
+//         const batchQuery = admin.firestore().collection("userbatch")
+//             .where("batchid", "==", id)
+//             .offset(skip)
+//             .limit(limit);
+        
+//         const countQuery = admin.firestore().collection("userbatch")
+//             .where("batchid", "==", id);
+
+//         const [snapshot, countSnapshot] = await Promise.all([batchQuery.get(), countQuery.get()]);
+
+//         const userPromises = snapshot.docs.map(async (doc) => {
+//             const userId = doc.data().userid;
+//             const userRef = admin.firestore().collection("UserNode").doc(userId);
+//             const userDoc = await userRef.get();
+//             const userData = userDoc.data();
+
+//             if (search) {
+//                 return userData && userData.username === search ? userData : null;
+//             }
+//             return userData;
+//         });
+
+//         const users = (await Promise.all(userPromises)).filter(user => user !== null);
+//         const count = countSnapshot.size;
+
+//         res.send({ message: "Batch users list", data: users, status: true, count });
+//     } catch (error) {
+//         console.error("Error retrieving users: ", error);
+//         res.status(500).send({ message: "Error retrieving users", status: false, error: error.message });
+//     }
+// };
+
+const batchUsers = async (req, res) => { // For getting the batch users list
     try {
         const { id, skip = 0, limit = 10, search = '' } = req.body;
 
@@ -1088,11 +1167,14 @@ const batchUsers = async (req, res) => {//for getting the batch users list
             .where("batchid", "==", id)
             .offset(skip)
             .limit(limit);
-        
+
         const countQuery = admin.firestore().collection("userbatch")
             .where("batchid", "==", id);
 
         const [snapshot, countSnapshot] = await Promise.all([batchQuery.get(), countQuery.get()]);
+
+        const regex = new RegExp(search, 'i'); // Create a regex from the search string, case-insensitive
+        
 
         const userPromises = snapshot.docs.map(async (doc) => {
             const userId = doc.data().userid;
@@ -1100,10 +1182,10 @@ const batchUsers = async (req, res) => {//for getting the batch users list
             const userDoc = await userRef.get();
             const userData = userDoc.data();
 
-            if (search) {
-                return userData && userData.username === search ? userData : null;
+            if (userData && regex.test(userData.username)) {
+                return userData;
             }
-            return userData;
+            return null;
         });
 
         const users = (await Promise.all(userPromises)).filter(user => user !== null);
@@ -1119,11 +1201,20 @@ const batchUsers = async (req, res) => {//for getting the batch users list
 
 const deletebathuser=async(req,res)=>{// for delete the batch users
    try {
-        console.log(req.body)
+        console.log("-------------------------------------------------------------------------------------------------------");
+        // console.log(req.body)
         let snapshot=await admin.firestore().collection("userbatch").where("userid","==",req.body.ids[0]).get()
+        // console.log(snapshot.docs[0].data())
+        let userbatchdata=snapshot.docs[0].data()
+        console.log(userbatchdata);
+        let batchref=admin.firestore().collection("batch").doc(userbatchdata.batchid)
+        let batchdata=await (await batchref.get()).data()
+
+
         snapshot.forEach((doc)=>{
             doc.ref.delete()
         })
+        batchref.update({usercount:batchdata.usercount-1})
         res.send({message:"Action successfull",status:true})
     } catch (error) {
         console.log(error)
@@ -1131,35 +1222,118 @@ const deletebathuser=async(req,res)=>{// for delete the batch users
     }
 }
 
+// const chagneBatchList=async(req,res)=>{//for getting the specific company change batch list
+//     try {
+//         let data=req.body
+       
+      
+       
+     
+       
+//         let currentuserBatch = await admin.firestore().collection("userbatch").where("userid", "==", data._id).get();
+   
+//         let result = currentuserBatch.docs[0].data();
+//         let current=await admin.firestore().collection("batch").where("_id","==",result.batchid).get()
+//         let ress=current.docs[0].data()
+//         console.log(ress.role)
+//         let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).where("city","==",ress.city)
+//         .get()
+//         let batchslist=[]
+//         batchRef.forEach((doc)=>{
+//             batchslist.push(doc.data())
+//         })
+//         console.log("----------------------------------------------------------------------------------------------------------")
+//         console.log(batchslist)
+//         let batchlist=batchslist.filter(x=>x._id!==result.batchid)
+//         res.status(200).send({message:"batch lists",currentbatch:ress,batchlist:batchlist,status:true})
+//     } catch (error) {
+//         console.log(error)
+//         res.status(500).send({message:"somthing went wrong",status:false})
+//     } 
+// }
+
 
 const chagneBatchList=async(req,res)=>{//for getting the specific company change batch list
     try {
         let data=req.body
-        console.log(data);
-     
-        // let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).offset(0).limit(req.body.limit?req.body.limit:10).get()
-        let batchRef=await admin.firestore().collection("batch").where("companyid","==",req.body.companyid).where("status","in",["1","2"]).get()
-        let batchslist=[]
-        batchRef.forEach((doc)=>{
-            batchslist.push(doc.data())
-        })
         let currentuserBatch = await admin.firestore().collection("userbatch").where("userid", "==", data._id).get();
         let result = currentuserBatch.docs[0].data();
-     
         let current=await admin.firestore().collection("batch").where("_id","==",result.batchid).get()
         let ress=current.docs[0].data()
+        let batchslist=[]
+      
+
+       
+        const db = admin.firestore();
+
+        const batchCollection = db.collection('batch');
+
+        async function getBatches(companyId, city, roles) {
+        try {
+            // Create the initial query with the first set of conditions
+            let batchQuery = batchCollection
+            .where('companyid', '==', companyId)
+            .where('status', 'in', ['1', '2'])
+            .where('city', '==', city);
+            let roleQueries = [];
+
+            // Create a separate query for each role in the roles array
+            roles.forEach(role => {
+            let roleQuery = batchQuery.where('role', 'array-contains', role).get();
+            roleQueries.push(roleQuery);
+            });
+
+            // Execute all the queries in parallel
+            let querySnapshots = await Promise.all(roleQueries);
+
+            // Collect all documents from the results
+            
+            querySnapshots.forEach(querySnapshot => {
+            querySnapshot.forEach(doc => {
+                batchslist.push(doc.data());
+            });
+            });
+
+            return batchslist;
+        } catch (error) {
+            console.error('Error getting documents: ', error);
+        }
+        }
+
+        // Example usage
+        const companyId = req.body.companyid;
+        const city = ress.city;
+        const roles = ress.role;
+
+        getBatches(companyId, city, roles).then(docs => {
+        // console.log('Retrieved documents:', docs);
         let batchlist=batchslist.filter(x=>x._id!==result.batchid)
         res.status(200).send({message:"batch lists",currentbatch:ress,batchlist:batchlist,status:true})
+        });
+            
     } catch (error) {
-        console.log(error)
-        res.status(500).send({message:"somthing went wrong",status:false})
+            console.log(error)
+            res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
 
 
 const shiftBatch=async(req,res)=>{//for shifting the uer form one batch to another
     try {
+        console.log(req.body)
        let snapshot= await admin.firestore().collection("userbatch").where("userid","==",req.body.userid).get()
+       console.log(snapshot.docs[0].data())
+       let currentBatch=snapshot.docs[0].data().batchid
+       let batchref=await await admin.firestore().collection("batch").doc(currentBatch)
+       let batchdata=(await batchref.get()).data()
+       console.log(batchdata.usercount===undefined)
+       if(batchdata.usercount===undefined||batchdata.usercount===0){
+        
+        batchref.update({usercount:0})
+       }else{
+        batchref.update({usercount:batchdata.usercount-1})
+       }
+      
         snapshot.forEach((doc)=>{
             doc.ref.update({batchid:req.body.batchid})
         })
@@ -1182,6 +1356,7 @@ const profileData=async(req,res)=>{//for getting the profile data  of admin
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
+
 
 // const updateprofile=async(req,res)=>{//for updateing the profile of admin
 //     try {
@@ -1210,7 +1385,7 @@ const updateprofile=async(req,res)=>{//for updateing the profile of admin
             doc.ref.update(data)
         })
         let adminid=await docRef.docs[0].data()._id
-        console.log(adminid)
+        // console.log(adminid)
         let admindata=(await admin.firestore().collection("UserNode").doc(adminid).get()).data()
         
         res.send({message:"update successfully",status:true,data:admindata})
@@ -1223,10 +1398,11 @@ const updateprofile=async(req,res)=>{//for updateing the profile of admin
 
 const adduserbatchlist=async(req,res)=>{//listing the user of specific compnay to add to the batch
     try {
-        let data=req.body
+        let data=req.body.batchid //this is actually company id
         let userList=[]
         let batchusers=[]
-        let snapshot=(await admin.firestore().collection("batch").doc(data.batchid).get()).data()
+        let snapshot=(await admin.firestore().collection("batch").doc(data).get()).data()
+        console.log(snapshot)
         
         let userDoc=await admin.firestore().collection("UserNode").where("access","==","App User").where("companyid","==",snapshot.companyid).where("city","==",snapshot.city).get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
@@ -1255,9 +1431,19 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
     try {
        
         let {data,batchid,companyid}=req.body
+        console.log(req.body)
         for(let i=0;i<data.length;i++){
             let userbatch=await admin.firestore().collection("userbatch").add({userid:data[i],batchid:batchid,companyid:companyid})
             await userbatch.update({_id:userbatch.id})
+        }
+        let batchref= admin.firestore().collection("batch").doc(batchid)
+        let batchdata=await (await batchref.get()).data()
+     
+        if(batchdata.usercount===undefined){
+            batchref.update({usercount:1})
+        }else{
+            console.log("inside of thies")
+            batchref.update({usercount:batchdata.usercount+1})
         }
         res.status(200).send({message:"add user to batch",status:true})
         
@@ -1270,13 +1456,13 @@ const addUserToBatch=async(req,res)=>{//for addint the user to specific batch
 
 const deletedUserslist=async(req,res)=>{//fot getting the delted users list
     try {
-        console.log("request reached here");
+        // console.log("request reached here");
         let userRef=await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()
         let deletedUser=[]
         userRef.forEach((doc=>{
             deletedUser.push(doc.data())
         }))
-        console.log(deletedUser)
+        // console.log(deletedUser)
     } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",statsu:false})
@@ -1286,7 +1472,7 @@ const deletedUserslist=async(req,res)=>{//fot getting the delted users list
 
 const addeditTrainer=async(req,res)=>{//for adding and editing the trainer
     try {
-        console.log(req.body)
+        // console.log(req.body)
         let action=req.body.actiontype
         delete req.body.actiontype
         let data=req.body
@@ -1338,7 +1524,9 @@ const trainersList = async (req, res) => {//for getting the trainers list
             .where("status", "in", status);
 
         if (search) {
-            docQuery = docQuery.where("slugnam", "==", search);
+            let searchTerm=search.toLowerCase()
+            docQuery = docQuery.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
         }
 
         let snapshot = await docQuery.offset(skip).limit(limit).orderBy("createAt",'desc').get();                                  //here the below code want to be used for the getting the order in des of addignt to database
@@ -1375,7 +1563,7 @@ const updateTrainerStatus=async(req,res)=>{//this is for updateing the trainer s
 
 const deleteTrainer=async(req,res)=>{//this is for deleting the trainer
     try {
-        console.log(req.body)
+        // console.log(req.body)
         let id=req.body.ids[0]
         let docRef=await admin.firestore().collection("UserNode").doc(id).update({status:"0"})
         res.send({message:"Deleted Successfully", status:true})
@@ -1386,6 +1574,44 @@ const deleteTrainer=async(req,res)=>{//this is for deleting the trainer
     }
 }
 
+
+const smtpSetting=async(req,res)=>{
+    try {
+        let result=await SmptSchema.findOne({alias:"smtp"})
+   
+        res.send(result.settings)
+        
+    } catch (error) {
+        console.log("error")
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const smtpSave=async(req,res)=>{
+    try {
+        
+        let settings=req.body
+        console.log(settings)
+        let data={
+            settings:{
+                smtp_host:settings.smtp_host,
+                smtp_port:settings.smtp_port,
+                smtp_password:settings.smtp_password,
+                mode:settings.mode,
+                smtp_username:settings.smtp_username
+            }
+        }
+        let result=await SmptSchema.updateOne({alias:"smtp"},{$set:data},{upsert:true})
+        res.send({message:"updated successfully",status:true})
+           
+
+
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
 
 /**********************************************************************************************************************************************************************************************************************/
@@ -1432,6 +1658,8 @@ module.exports = {
     updateTrainerStatus,
     deleteTrainer,
     batchCompanyList,
+    smtpSetting,
+    smtpSave
     
 }
 
