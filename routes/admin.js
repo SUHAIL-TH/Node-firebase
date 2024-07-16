@@ -4,7 +4,8 @@ const adminController=require("../controller/adminController")
 const { upload } = require("../middleware/multer");
 const companyController=require("../controller/companyController");
 const commonController=require("../controller/commonController")
-const trainerController=require("../controller/trainerController")
+const trainerController=require("../controller/trainerController");
+const { admin } = require("../config/firebaseConfig");
 
 
 
@@ -80,6 +81,11 @@ adminRouter.post("/common/updateprofile",commonController.profileUpdate)
 adminRouter.post("/trainer/userlist",trainerController.trainerUserList)
 adminRouter.post("/trainer/company",trainerController.trainercompanyData)
 
+
+//********************************************************************************************General settings */
+
+adminRouter.get("/settings/smtp",adminController.smtpSetting)
+adminRouter.post("/settings/smtp/save",adminController.smtpSave)
 
 
 module.exports=adminRouter
