@@ -477,7 +477,7 @@ const getUsersList = async (req, res) => {
                 }
             });
 
-            // Calculate total count based on combined results
+            
             const count = data.length;
 
             res.status(200).send({
