@@ -368,11 +368,8 @@ const   addeditcompany = async (req, res) => { //for adding and editing companie
 };
 
 
-const company_subadmin_Delete = async (req,res)=>{//for deleting the company
+const companyDelete = async (req,res)=>{//for deleting the company
     try {
-        console.log("here i am mr suhail th")
-        console.log(req.body)
-
         let ids=req.body.ids
         let batch=admin.firestore().batch()
         ids.forEach((id)=>{
@@ -380,6 +377,27 @@ const company_subadmin_Delete = async (req,res)=>{//for deleting the company
             batch.update(batchref,{status:"0"})
 
         })
+        await   batch.commit()
+
+        res.send({message:"deleted successfully",status:true})
+        
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+const company_subadmin_Delete = async (req,res)=>{//for deleting the company
+    try {
+        let ids=req.body.ids
+        let batch=admin.firestore().batch()
+        await Promise.all(ids.map(async(id)=>{
+            const dataRef=admin.firestore().collection("UserNode").doc(id)
+            const data=(await dataRef.get()).data().uid
+            batch.delete(dataRef)
+            await admin.auth().deleteUser(data)
+        }))
+      
         await   batch.commit()
 
         res.send({message:"deleted successfully",status:true})
@@ -477,7 +495,7 @@ const getUsersList = async (req, res) => {
                 }
             });
 
-            
+            // Calculate total count based on combined results
             const count = data.length;
 
             res.status(200).send({
@@ -1564,8 +1582,15 @@ const updateTrainerStatus=async(req,res)=>{//this is for updateing the trainer s
 const deleteTrainer=async(req,res)=>{//this is for deleting the trainer
     try {
         // console.log(req.body)
-        let id=req.body.ids[0]
-        let docRef=await admin.firestore().collection("UserNode").doc(id).update({status:"0"})
+        let id=req.body.ids
+        let batch=admin.firestore().batch()
+        id.forEach((id)=>{
+            let batchref=admin.firestore().collection("UserNode").doc(id)
+            batch.update(batchref,{status:"0"})           
+        })
+        await batch.commit()
+
+        // let docRef=await admin.firestore().collection("UserNode").doc(id).update({status:"0"})
         res.send({message:"Deleted Successfully", status:true})
         
     } catch (error) {
@@ -1659,7 +1684,8 @@ module.exports = {
     deleteTrainer,
     batchCompanyList,
     smtpSetting,
-    smtpSave
+    smtpSave,
+    companyDelete
     
 }
 
