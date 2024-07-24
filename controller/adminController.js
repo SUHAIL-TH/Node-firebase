@@ -5,6 +5,7 @@ const firebbase = require("firebase-admin");
 const SmptSchema =require("../model/stmpt")
 
 
+
 // const admin = require("firebase-admin")
 // const firebase=require('firebase')
 // admin.initializeApp({
@@ -17,8 +18,10 @@ const SmptSchema =require("../model/stmpt")
 const roleCheck = async (req, res) => { // used to check the role of the login admin
     try {
         let { email } = req.body
+        console.log(email)
         const usersRef = admin.firestore().collection('UserNode');
         const querySnapshot = await usersRef.where('email', '==', email).get();
+        console.log(querySnapshot.docs[0].data())
 
         if (querySnapshot.empty) {
             return res.send({ message: 'Unautherizes Access', status: false })
@@ -327,11 +330,13 @@ const   addeditcompany = async (req, res) => { //for adding and editing companie
         delete req.body.actiontype
         let data = req.body;
         data.webaccess="1"
+        console.log(req.body)
         let lowercasecity=[]
-        let citydata=data.city
-        for(let i=0;i<citydata.length;i++){
-            lowercasecity.push(citydata[i].toLowerCase())
-        }
+        // let citydata=data.city
+        // for(let i=0;i<citydata.length;i++){
+        //     lowercasecity.push(citydata[i].toLowerCase())
+        // }
+        console.log(data)
         if(type==="create"){
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
             data.activeuserscount=0
@@ -447,9 +452,104 @@ const companyStatus = async (req,res)=>{//for upating the company status
     }
 }
 
+const getUsersList=async(req,res)=>{
+    try {
+        console.log(req.body)
+        // let reqdata=req.body
+        // return
+        let status = [];
+        let reqdata=req.body.filter_action
+        let reqstatus=reqdata.Status
+        if (reqstatus === "3") {
+            status = ["1", "2"];
+        } else if (reqstatus === '1') {
+            status = ["1"];
+        } else if (reqstatus ==='2') {
+            status = ["2"];
+        } else if (reqstatus === '0') {
+            status = ["0"];
+        }else{
+           
+            status=["1","2"]
+        }
+      
+
+        let query = admin.firestore().collection("UserNode")
+        .where('access', '==', 'App User')
+        .where('status', 'in', status)
+        if(reqdata.Company){
+            query=query.where("companyid","==",reqdata.Company);
+        }
+        if(reqdata.City){
+            query=query.where("city","==",reqdata.City)
+        }
+        if(reqdata.Country){
+            query=query.where("country","==",reqdata.Country)
+        }
+        if(reqdata.Role){
+            query=query.where("role","==",reqdata.Role)
+        }
+        if(reqdata.Team){
+            query=query.where("team","==",reqdata.Team)
+        }
+        if(reqdata.From_Date){
+            reqdata.From_Date=moment(reqdata.From_Date).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            console.log(reqdata.From_Date)
+            query=query.where("joindate", ">=", reqdata.From_Date)
+        }
+        
+        if(reqdata.To_Date){
+            console.log("hi  here")
+            reqdata.To_Date=moment(reqdata.To_Date).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            console.log(reqdata.To_Date)
+            query=query.where("joindate", "<=", reqdata.To_Date)
+        }
+        
+        if(req.body.search){
+            let searchTerm=req.body.search.toLowerCase()
+            query = query.where("username", ">=", searchTerm)
+                         .where("username", "<=", searchTerm + "\uf8ff");
+        }
+        let count=(await query.get()).size
+        const snapshot = await query.offset(req.body.skip).limit(req.body.limit).orderBy("createAt","desc").get();
+            
+            let data = [];
+            snapshot.forEach(doc => {
+                data.push({_id: doc.id, ...doc.data()});
+            });
+            
+          console.log(data)
+            // res.status(200).send({data,count,message: "Users fetched successfully",status: true,all:allcount??0,active:activecoutn??0,inactive:inactivecount??0,delete:deletecount??0});
+           return  res.status(200).send({
+                data,
+                count,
+                message: "Users fetched successfully",
+                status: true,
+            });
+
+        // where("joindate", ">=", startdate).where("joindate","<=",endate)
 
 
-const getUsersList = async (req, res) => {
+            // filter_action: {
+            //     Brands: '',
+            //     Status: '0',
+            //     Recommended: '',
+            //     Category: '',
+            //     Subcategory: '',
+            //     Company: '0OCfGY7DHHRMK9WDg0Aw',
+            //     From_Date: '',
+            //     To_Date: '',
+            //     id: '',
+            //     daterange: []
+            //   }
+
+    } catch (error) {
+        console.log(error)
+        // res.staty7
+    }
+}
+
+const getUsersLists= async (req, res) => {
     try {
         // console.log(req.body)
         let status = [];
@@ -462,10 +562,10 @@ const getUsersList = async (req, res) => {
         } else if (req.body.status === 0) {
             status = ["0"];
         }
-        let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","in",["1","2"]).get()).size
-                let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
-                let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
-                let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
+                // let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","in",["1","2"]).get()).size
+                // let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
+                // let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
+                // let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
         let query = admin.firestore().collection("UserNode")
             .where('access', '==', 'App User')
             .where('status', 'in', status);
@@ -494,17 +594,13 @@ const getUsersList = async (req, res) => {
                     data.push({_id: doc.id, ...doc.data()});
                 }
             });
-
-            // Calculate total count based on combined results
             const count = data.length;
-
-            res.status(200).send({
+           // res.status(200).send({data,count,message: "Users fetched successfully",status: true,all:allcount??0,active:activecoutn??0,inactive:inactivecount??0,delete:deletecount??0});
+           res.status(200).send({
                 data,
                 count,
                 message: "Users fetched successfully",
                 status: true,
-                all:allcount,
-                active:activecoutn,inactive:inactivecount,delete:deletecount
             });
         } else {
             // Handle case where no search term is provided
@@ -514,13 +610,12 @@ const getUsersList = async (req, res) => {
             snapshot.forEach(doc => {
                 data.push({_id: doc.id, ...doc.data()});
             });
+            // res.status(200).send({data,count,message: "Users fetched successfully",status: true,all:allcount??0,active:activecoutn??0,inactive:inactivecount??0,delete:deletecount??0});
             res.status(200).send({
                 data,
                 count,
                 message: "Users fetched successfully",
                 status: true,
-                all:allcount,
-                active:activecoutn,inactive:inactivecount,delete:deletecount
             });
         }
     } catch (error) {
@@ -529,53 +624,6 @@ const getUsersList = async (req, res) => {
     }
 };
 
-
-
-
-// const getUsersLists = async (req, res) => {//for getting the userslist
-//     try {  
-//         let status=[]
-//         if(req.body.status===3){
-//             status=["1","2"]
-//         }else if(req.body.status===1){
-//             status=["1"]
-//         }else if(req.body.status===2){
-//             status=["2"]
-//         }else if(req.body.status===0){
-//             status=["0"]
-//         }
-
-//         let allcount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","in",["1","2"]).get()).size
-//         let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","1").get()).size
-//         let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","2").get()).size
-//         let deletecount=(await admin.firestore().collection("UserNode").where("access","==","App User").where("status","==","0").get()).size
-//         let query = admin.firestore().collection("UserNode").where('access', '==', 'App User').where('status',"in",status);
-//         if (req.body.search) {
-//             let searchTerm = req.body.search.toLowerCase();
-//             let endTerm = searchTerm.replace(/.$/, c => String.fromCharCode(c.charCodeAt(0) + 1));
-            
-//             query = query.where("username", ">=", searchTerm)
-//             .where("username", "<", endTerm);
-//         }
-//         const count = (await query.get()).size
-        
-//         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).orderBy("createAt","desc").get();
-//         let data = [];
-//         snapshot.forEach((doc) => { 
-//             data.push({_id:doc.id,...doc.data()});
-//         });
-        
-//         res.status(200).send({ data, count, message: "Users fetched successfully", status: true ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount});
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).send({ message: "Something went wrong", status: false });
-//     }
-// };
-
-// if (req.body.search) {
-//     console.log(req.body.search)
-//     query = query.where("username", "==", req.body.search);
-// }
 
 
 const getcompanynames=async(req,res)=>{//for getting the companynames
@@ -758,11 +806,13 @@ const deleteUser = async (req, res) => {
 
 const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     try {
+        let skippeddocumets=[]
         // console.log("reached here");
         let file=req.file
         if(!file){
            return res.status(400).send({message:'no files is uploaded',status:false})
         }
+        
         const workbook = XLSX.read(file.buffer, { type: "buffer"}); //this is for readintg the beffer data in our req.file
         const sheetName = workbook.SheetNames[0];
         const   worksheet = workbook.Sheets[sheetName];
@@ -770,57 +820,103 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
         if(jsonData.length===0){
             return res.send({message:"Xcel sheet has no data",stats:false})
         }
-        const requiredFields = ['username', 'email', 'mobile',"city","country"];
+        const requiredFields = ['username', 'email', 'mobile',"city","country","joindate","team","role"];
         const header = Object.keys(jsonData[0] || {});
         
         const missingFields = requiredFields.filter(field => !header.includes(field));
         
         if (missingFields.length > 0) {
             // console.log(`The sheet is missing the following required fields : ${missingFields.join(', ')}`);
-          return  res.send({message:`missing fields:${missingFields.join(", ")}`,status:false})
+          return  res.send({message:`missing fields like :${missingFields.join(", ")}`,status:false})
            
         }
 
         let docref=await admin.firestore().collection("UserNode").doc(req.body.companyid).get()
-        let companyname=(await docref.data()).name
+        let companydata=await docref.data()
         let citylist=(await docref.data()).city
+        let rolelist=companydata.role
+        let teamlist=companydata.team
         let count=0
          let datasss=jsonData.map(async(data, index) => {
             // console.log(data);
             data.access="App User"
             data.status="1"
-            data.joindate=req.body.joindate
+            // data.joindate=req.body.joindate
             data.mobile=data.mobile.toString()
-            data.company=companyname
+            data.role=data.role.toLowerCase()
+            data.team=data.team.toLowerCase()
+            data.company=companydata.name
             data.city=data.city.toLowerCase()
             data.country=data.country.toLowerCase()
             data.companyid=req.body.companyid
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+           
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
+            let emailexsist=(await admin.firestore().collection("UserNode").where("email","==",data.email).get()).size
             let phoneexsist=userPhone.docs.length
-            
+            console.log(emailexsist)
+            console.log("-----------------------------------------------------------------fdf--------------------------------")
+            console.log(data)
             if(data.hasOwnProperty("__EMPTY")){
                 
                 count++
             }else{
-                if(phoneexsist>0 &&data.mobile.length===10){
+                if(emailexsist>0){
                     count++
+                    skippeddocumets.push({name:data.name,reason:"email already exsisted"})
+                    
                 }else{
-                    if(citylist.includes(data.city.toLowerCase())){
-    
-                        try {
-        
-                            let result=await admin.firestore().collection("UserNode").add(data)
-                            await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
-                            return { success: true, id: result.id };
-                        } catch (error) {   
-                            count++
-                            return {success:false,error:error}
-                        }
-                    }else{
+                    if(phoneexsist>0 &&data.mobile.length===10){
                         count++
+                        skippeddocumets.push({name:data.name,reason:"phone number has skipped due to duplicate or invalid"})
+                       
+                    }else{
+                        if(rolelist.includes(data.role)){
+                            if(teamlist.includes(data.team)){
+                                let countryexsits=companydata.countryList.filter((x)=>x.country===data.country)
+                                if(countryexsits.length>0){
+                                    let cityexsits=countryexsits[0].city.includes(data.city)
+                                    if(cityexsits){
+                                        let result=await admin.firestore().collection("UserNode").add(data)
+                                        await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
+                                        return { success: true, id: result.id };
+                                    }else{
+                                        count++
+                                        skippeddocumets.push({name:data.name,reason:"ciyt not exsisted"})
+                                    }
+                                }else{
+                                    count++
+                                    skippeddocumets.push({name:data.name,reason:"country not exsisted"})
+                                }
+
+                            }else{
+                                count++
+                                skippeddocumets.push({name:data.name,reason:"team is not exsisted"})
+                            }
+
+                        }else{
+                            count++
+                            skippeddocumets.push({name:data.name,reason:"role is not exsisted"})
+                            
+                        }
+                        // if(citylist.includes(data.city.toLowerCase())){
+        
+                        //     try {
+            
+                        //         let result=await admin.firestore().collection("UserNode").add(data)
+                        //         await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
+                        //         return { success: true, id: result.id };
+                        //     } catch (error) {   
+                        //         count++
+                        //         return {success:false,error:error}
+                        //     }
+                        // }else{
+                        //     count++
+                        // }
                     }
+
                 }
+             
             }
             
             
