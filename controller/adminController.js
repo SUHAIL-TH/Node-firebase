@@ -1724,9 +1724,6 @@ const smtpSave=async(req,res)=>{
         }
         let result=await SmptSchema.updateOne({alias:"smtp"},{$set:data},{upsert:true})
         res.send({message:"updated successfully",status:true})
-           
-
-
         
     } catch (error) {
         console.log(error)
