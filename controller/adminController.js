@@ -1726,6 +1726,9 @@ const smtpSave=async(req,res)=>{
         res.send({message:"updated successfully",status:true})
         
     } catch (error) {
+
+
+        
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
