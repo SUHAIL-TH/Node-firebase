@@ -18,10 +18,10 @@ const SmptSchema =require("../model/stmpt")
 const roleCheck = async (req, res) => { // used to check the role of the login admin
     try {
         let { email } = req.body
-        console.log(email)
+        // console.log(email)
         const usersRef = admin.firestore().collection('UserNode');
         const querySnapshot = await usersRef.where('email', '==', email).get();
-        console.log(querySnapshot.docs[0].data())
+        // console.log(querySnapshot.docs[0].data())
 
         if (querySnapshot.empty) {
             return res.send({ message: 'Unautherizes Access', status: false })
@@ -265,10 +265,10 @@ const companyList = async (req,res)=>{// for getting the company list
         }
         let snapshotCount=await collectionRef.get()
         let count=snapshotCount.size; 
-        let allcount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","in",["1","2"]).get()).size
-        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","1").get()).size
-        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","2").get()).size
-        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","0").get()).size
+        // let allcount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","in",["1","2"]).get()).size
+        // let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","1").get()).size
+        // let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","2").get()).size
+        // let deletecount=(await admin.firestore().collection("UserNode").where("access","==","company").where("status","==","0").get()).size
         collectionRef=collectionRef.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc'); //here want to add orderBy also to sort the document
         collectionRef.get().then((snapshot)=>{
             snapshot.forEach((doc)=>{
@@ -277,7 +277,7 @@ const companyList = async (req,res)=>{// for getting the company list
                 data.push(insertdata)
             })
             // console.log(allcount,activecoutn,inactivecount,deletecount)
-            res.status(200).send({message:"companies list ",status:true,data:data,count:count ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount})
+            res.status(200).send({message:"companies list ",status:true,data:data,count:count })
         }).catch((error)=>{
             console.log(error)
             res.status(500).send({message:"somthing went wrong",status:false})
@@ -340,6 +340,10 @@ const   addeditcompany = async (req, res) => { //for adding and editing companie
         if(type==="create"){
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
             data.activeuserscount=0
+            data.totalusers=0
+            data.trainerscount=0
+            data.clientadmincount=0
+            data.batchcount=0
             const docRef = await admin.firestore().collection("UserNode").add(data)
             // .then((result)=>{
             //     if(result){
@@ -396,12 +400,18 @@ const company_subadmin_Delete = async (req,res)=>{//for deleting the company
     try {
         let ids=req.body.ids
         let batch=admin.firestore().batch()
+        let count=0
         await Promise.all(ids.map(async(id)=>{
+            count++
             const dataRef=admin.firestore().collection("UserNode").doc(id)
+            const companyid=(await dataRef.get()).data().companyid
+            let comref=admin.firestore().collection("UserNode").doc(companyid)
+            comref.update({clientadmincount:firebbase.firestore.FieldValue.increment(-1)})
             const data=(await dataRef.get()).data().uid
             batch.delete(dataRef)
             await admin.auth().deleteUser(data)
         }))
+
       
         await   batch.commit()
 
@@ -454,9 +464,8 @@ const companyStatus = async (req,res)=>{//for upating the company status
 
 const getUsersList=async(req,res)=>{
     try {
-        console.log(req.body)
-        // let reqdata=req.body
-        // return
+     console.log(req.body)
+     
         let status = [];
         let reqdata=req.body.filter_action
         let reqstatus=reqdata.Status
@@ -499,14 +508,16 @@ const getUsersList=async(req,res)=>{
         }
         
         if(reqdata.To_Date){
-            console.log("hi  here")
+        
             reqdata.To_Date=moment(reqdata.To_Date).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
             console.log(reqdata.To_Date)
             query=query.where("joindate", "<=", reqdata.To_Date)
         }
         
         if(req.body.search){
+            console.log("inside")
             let searchTerm=req.body.search.toLowerCase()
+            console.log(searchTerm)
             query = query.where("username", ">=", searchTerm)
                          .where("username", "<=", searchTerm + "\uf8ff");
         }
@@ -517,35 +528,17 @@ const getUsersList=async(req,res)=>{
             snapshot.forEach(doc => {
                 data.push({_id: doc.id, ...doc.data()});
             });
-            
-          console.log(data)
-            // res.status(200).send({data,count,message: "Users fetched successfully",status: true,all:allcount??0,active:activecoutn??0,inactive:inactivecount??0,delete:deletecount??0});
-           return  res.status(200).send({
-                data,
-                count,
-                message: "Users fetched successfully",
-                status: true,
-            });
+           return  res.status(200).send({ data,count, message: "Users fetched successfully",status: true, });
+                
+               
+                
+           
 
-        // where("joindate", ">=", startdate).where("joindate","<=",endate)
-
-
-            // filter_action: {
-            //     Brands: '',
-            //     Status: '0',
-            //     Recommended: '',
-            //     Category: '',
-            //     Subcategory: '',
-            //     Company: '0OCfGY7DHHRMK9WDg0Aw',
-            //     From_Date: '',
-            //     To_Date: '',
-            //     id: '',
-            //     daterange: []
-            //   }
+        
 
     } catch (error) {
         console.log(error)
-        // res.staty7
+        res.status(500).send({message:"somthing went wrong ",statusP:false})
     }
 }
 
@@ -662,7 +655,8 @@ const addedituser=async(req,res)=>{//for add and edititng the user
            if(companyData.activeuserscount<companyData.activeusers){
              if(result===0){
                 await companyRef.update({
-                    activeuserscount:firebbase.firestore.FieldValue.increment(1)
+                    activeuserscount:firebbase.firestore.FieldValue.increment(1),
+                    totalusers:firebbase.firestore.FieldValue.increment(1)
                 })
                 data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
                 data.profile="User"
@@ -670,7 +664,8 @@ const addedituser=async(req,res)=>{//for add and edititng the user
                 .then((dodRef)=>{
                     return dodRef.update({_id:dodRef.id})
                 }).then((result)=>{
-                    // console.log(result);
+                  
+
                     res.send({message:"user added successfully",status:true})
                 }).catch((error)=>{
                     console.log(error);
@@ -684,17 +679,23 @@ const addedituser=async(req,res)=>{//for add and edititng the user
            }
 
         }else if(actiontype=="edit"){
-            // console.log(req.body)
+           
             let phonecheck=await admin.firestore().collection("UserNode").where("mobile","==",req.body.mobile).where("_id","!=",data._id).get()
+            let emailcheck=(await admin.firestore().collection("UserNode").where("email","==",req.body.email).get()).size
             let count=phonecheck.size
-            // console.log(count);
+         
             if(count<=0){
-            admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
-                res.status(200).send({message:'updated successfully',status:true})
-                
-            }).catch((error)=>{
-                res.status(500).send({message:"somthing went wrong",status:false})
-            })
+                if(emailcheck>0){
+                    admin.firestore().collection("UserNode").doc(data._id).update(data).then((result)=>{
+                        res.status(200).send({message:'updated successfully',status:true})
+                        
+                    }).catch((error)=>{
+                        res.status(500).send({message:"somthing went wrong",status:false})
+                    })
+                }else{
+                    res.send({message:"Email already exsisted",status:false})
+                }
+            
 
             }else{
                 res.send({message:"Phone number already exsisted",status:false})
@@ -806,8 +807,9 @@ const deleteUser = async (req, res) => {
 
 const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
     try {
+     
         let skippeddocumets=[]
-        // console.log("reached here");
+       
         let file=req.file
         if(!file){
            return res.status(400).send({message:'no files is uploaded',status:false})
@@ -817,13 +819,22 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
         const sheetName = workbook.SheetNames[0];
         const   worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        // const header = Object.keys(jsonData[0] || {});
+        const headers = [];
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!worksheet[address]) continue; // Skip empty cells
+            headers.push(worksheet[address].v);
+        }
         if(jsonData.length===0){
             return res.send({message:"Xcel sheet has no data",stats:false})
         }
         const requiredFields = ['username', 'email', 'mobile',"city","country","joindate","team","role"];
-        const header = Object.keys(jsonData[0] || {});
+       
+       
         
-        const missingFields = requiredFields.filter(field => !header.includes(field));
+        const missingFields = requiredFields.filter(field => !headers.includes(field));
         
         if (missingFields.length > 0) {
             // console.log(`The sheet is missing the following required fields : ${missingFields.join(', ')}`);
@@ -833,15 +844,41 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
 
         let docref=await admin.firestore().collection("UserNode").doc(req.body.companyid).get()
         let companydata=await docref.data()
-        let citylist=(await docref.data()).city
+        const currentTotalUsers = companydata.totalusers||0;
+     
         let rolelist=companydata.role
         let teamlist=companydata.team
         let count=0
+        let insertcount=0
          let datasss=jsonData.map(async(data, index) => {
-            // console.log(data);
-            data.access="App User"
+            if (!data.email || !data.mobile || !data.team || !data.role || !data.country || !data.city || !data.username || !req.body.joindate) {
+                count++;
+                skippeddocumets.push({ name: data.username?data.username:data.email, reason: "Missing required fields" });
+                return null; // Skip document
+            }
+            console.log(data.joindate)
+            function excelDateToJSDate(serial) {
+                // Excel's epoch starts at 1899-12-30
+                var excelEpoch = new Date(Date.UTC(1899, 11, 30)); // Use UTC to avoid timezone issues
+                var daysOffset = serial - 1; // Subtract 1 to adjust for the leap year bug in Excel
+            
+                // Calculate the date by adding the number of days to the epoch
+                var jsDate = new Date(excelEpoch.getTime() + daysOffset * 86400000); // 86400000 ms in a day
+            
+                // Add one more day (86400000 milliseconds) to the resulting date
+                jsDate = new Date(jsDate.getTime() + 86400000);
+            
+                return jsDate;
+            }
+            
+            
+            let excelDate = data.joindate; // Example Excel date serial number
+            data.joindate = excelDateToJSDate(excelDate);
+            data.joindate=data.joindate.toString()
             data.status="1"
+            data.access="App User"
             // data.joindate=req.body.joindate
+            data.email=data.email
             data.mobile=data.mobile.toString()
             data.role=data.role.toLowerCase()
             data.team=data.team.toLowerCase()
@@ -849,70 +886,70 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
             data.city=data.city.toLowerCase()
             data.country=data.country.toLowerCase()
             data.companyid=req.body.companyid
+            // console.log(data.joindate)
+            
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
            
             let userPhone=await admin.firestore().collection("UserNode").where("mobile","==",data.mobile).get()
             let emailexsist=(await admin.firestore().collection("UserNode").where("email","==",data.email).get()).size
             let phoneexsist=userPhone.docs.length
-            console.log(emailexsist)
-            console.log("-----------------------------------------------------------------fdf--------------------------------")
-            console.log(data)
             if(data.hasOwnProperty("__EMPTY")){
                 
                 count++
             }else{
-                if(emailexsist>0){
-                    count++
-                    skippeddocumets.push({name:data.name,reason:"email already exsisted"})
+                const emailToValidate =data.enail;
+                const emailRegexp = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+                let status=emailRegexp.test(emailToValidate)
+                if(emailexsist>0||status){
+                    if(emailexsist>0){
+
+                        count++
+                        skippeddocumets.push({name:data.username,reason:"email already exsisted"})
+                    }else{
+                        count++
+                        skippeddocumets.push({name:data.username,reason:"Invalid email id"})
+
+                    }
                     
                 }else{
-                    if(phoneexsist>0 &&data.mobile.length===10){
+                    
+                    if(phoneexsist>0 ||data.mobile.length===10){
                         count++
-                        skippeddocumets.push({name:data.name,reason:"phone number has skipped due to duplicate or invalid"})
+                        skippeddocumets.push({name:data.username,reason:"phone number has skipped due to duplicate or invalid"})
                        
                     }else{
                         if(rolelist.includes(data.role)){
                             if(teamlist.includes(data.team)){
-                                let countryexsits=companydata.countryList.filter((x)=>x.country===data.country)
+                                // console.log(companydata)
+                                let countryexsits=companydata.countryCity.filter((x)=>x.country===data.country)
                                 if(countryexsits.length>0){
                                     let cityexsits=countryexsits[0].city.includes(data.city)
                                     if(cityexsits){
                                         let result=await admin.firestore().collection("UserNode").add(data)
                                         await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
+                                        insertcount++
                                         return { success: true, id: result.id };
                                     }else{
                                         count++
-                                        skippeddocumets.push({name:data.name,reason:"ciyt not exsisted"})
+                                        skippeddocumets.push({name:data.username,reason:"ciyt not exsisted"})
                                     }
                                 }else{
                                     count++
-                                    skippeddocumets.push({name:data.name,reason:"country not exsisted"})
+                                    skippeddocumets.push({name:data.username,reason:"country not exsisted"})
                                 }
 
                             }else{
                                 count++
-                                skippeddocumets.push({name:data.name,reason:"team is not exsisted"})
+                                skippeddocumets.push({name:data.username,reason:"team is not exsisted"})
                             }
 
                         }else{
                             count++
-                            skippeddocumets.push({name:data.name,reason:"role is not exsisted"})
+                            skippeddocumets.push({name:data.username,reason:"role is not exsisted"})
                             
                         }
-                        // if(citylist.includes(data.city.toLowerCase())){
-        
-                        //     try {
-            
-                        //         let result=await admin.firestore().collection("UserNode").add(data)
-                        //         await admin.firestore().collection("UserNode").doc(result.id).update({ _id: result.id });
-                        //         return { success: true, id: result.id };
-                        //     } catch (error) {   
-                        //         count++
-                        //         return {success:false,error:error}
-                        //     }
-                        // }else{
-                        //     count++
-                        // }
+                      
                     }
 
                 }
@@ -924,8 +961,12 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
 
         });
         let result= await Promise.all(datasss)//this is used to await until all the user are added to the firebase store and then only want to sent the response back to front end
-       
-        res.send({message:"Upload completed",status:true,count:count})
+        console.log(skippeddocumets)
+        let total=currentTotalUsers+insertcount
+        await admin.firestore().collection("UserNode").doc(req.body.companyid).update({
+            totalusers: total
+        });
+        res.send({message:"Upload completed",status:true,count:count,skippeddocs:skippeddocumets})
 
         
     } catch (error) {
@@ -937,16 +978,20 @@ const bulkuploaduser=async(req,res)=>{//for bulkuploading the user
 
 const addcompanySubadmin=async(req,res)=>{//for adding the subadmin for companies
     try {
+        console.log(req.body)
         let action=req.body.actiontype
         delete req.body.actiontype
         let data=req.body
         data.webaccess="1"
         if(action==="create"){
+            let companyref=admin.firestore().collection('UserNode').doc(req.body.companyid)
+            companyref.update({clientadmincount:firebbase.firestore.FieldValue.increment(1)})
+            data.createdAt=firebbase.firestore.FieldValue.serverTimestamp()
             admin.firestore().collection("UserNode").add(data).then((docRef)=>{
-                // console.log(result)
+               
                 return docRef.update({_id:docRef.id}) //this is used to add the id to the document we have created in firebase
             }).then((result)=>{
-                // console.log(result)
+               
                 res.send({messsage:"Added succusfully",status:true})
             }).catch((error)=>{
                 console.log(error)
@@ -977,7 +1022,7 @@ const companySubadminList=async(req,res)=>{//for getting the compnay subadmin li
         }
         const count = (await query.get()).size
         
-         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).get();
+         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).orderBy("createdAt","desc").get();
         let data = [];
         snapshot.forEach((doc) => {
             // console.log(doc.id)
@@ -1140,25 +1185,130 @@ const addeditBatch=async(req,res)=>{//for adding batches and users to the batche
 
 const getbatchlist=async(req,res)=>{//for getting the batchlist
     try {
-        // console.log(req.body)
-        let batchlist=[]
+        console.log(req.body)
+
+        // let filters=req.body.filter_action
+        // let bathreQuery=admin.firestore().collection("batch").where("companyid","==",filters.Company)
+
+        // if(filters.From_Date){
+        //     filters.From_Date=moment(filters.From_Date).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            
+        //     bathreQuery=bathreQuery.where("startdate", ">=", filters.From_Date)
+        // }
+        // if(filters.City.length>0){
+        //     bathreQuery=bathreQuery.where("city","array-contains",filters.City)
+        // }
+        // if(filters.Role.length>0){
+        //     bathreQuery=bathreQuery.where("role","array-contains",filters.Role)
+        // }
         
-        let query= admin.firestore().collection("batch").where("companyid","==",req.body.id).where("status","in",["1",'2'])
-        if(req.body.search){
-            let searchTerm=req.body.search.toLowerCase()
-        //    query= query.where("slugname","==",req.body.search)
-        query = query.where("slugname", ">=", searchTerm)
+        // if(filters.To_Date){
+        //     filters.To_Date=moment(filters.To_Date).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+           
+        //     bathreQuery=bathreQuery.where("startdate", "<=", filters.To_Date)
+        // }
+        
+        // if(req.body.search){
+          
+        //     let searchTerm=req.body.search
+        //     bathreQuery = bathreQuery.where("slugname", ">=", searchTerm)
+        //                  .where("slugname", "<=", searchTerm + "\uf8ff");
+        // }
+        // const count = (await bathreQuery.get()).size
+        // const snapshot = await bathreQuery.offset(req.body.skip).limit(req.body.limit).orderBy("createAt","desc").get();
+            
+        // let data = [];
+        // snapshot.forEach(doc => {
+        //     data.push({_id: doc.id, ...doc.data()});
+        // });
+       
+        // res.send({message:"batchlist",count:count,status:true,data:data})
+
+
+        //////////8888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
+        const filters = req.body.filter_action;
+        let bathreQuery = admin.firestore().collection("batch").where("companyid", "==", filters.Company);
+        
+        if (filters.From_Date) {
+            filters.From_Date = moment(filters.From_Date).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+            bathreQuery = bathreQuery.where("startdate", ">=", filters.From_Date);
+        }
+        
+        if (filters.To_Date) {
+            filters.To_Date = moment(filters.To_Date).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+            bathreQuery = bathreQuery.where("startdate", "<=", filters.To_Date);
+        }
+        
+        if (req.body.search) {
+            let searchTerm = req.body.search;
+            bathreQuery = bathreQuery.where("slugname", ">=", searchTerm)
                                      .where("slugname", "<=", searchTerm + "\uf8ff");
         }
-        const count = (await query.get()).size
         
-         const snapshot = await query.offset(req.body.skip).limit(req.body.limit).orderBy('createAt','desc').get();
-        snapshot.forEach((doc)=>{
-            batchlist.push(doc.data())
-        })
-        console.log(batchlist)
-        let batchusercoutnt=await admin.firestore().collection("batchuser")
-        res.send({message:"batchlist",count:count,status:true,data:batchlist})
+        // Log filter values
+        console.log('Filters:', filters);
+        
+        try {
+            const baseSnapshot = await bathreQuery.get();
+            let baseData = [];
+            baseSnapshot.forEach(doc => {
+                baseData.push({_id: doc.id, ...doc.data()});
+            });
+        
+            // Log base data
+            console.log('Base data retrieved:', baseData.length);
+            console.log('Base data:', JSON.stringify(baseData, null, 2));
+        
+            // Apply additional filtering for 'City'
+            let filteredData = baseData;
+        
+            if (Array.isArray(filters.City) && filters.City.length > 0) {
+                filteredData = filteredData.filter(doc => {
+                    const matches = doc.city && doc.city.some(city => filters.City.includes(city));
+                    console.log(`Filtering by city: ${filters.City}, Document city: ${doc.city}, Matches: ${matches}`);
+                    return matches;
+                });
+        
+                // Log after city filtering
+                console.log('Filtered data by city length:', filteredData.length);
+                console.log('Filtered data by city:', JSON.stringify(filteredData, null, 2));
+            }
+        
+            // Apply additional filtering for 'Role'
+            if (Array.isArray(filters.Role) && filters.Role.length > 0) {
+                filteredData = filteredData.filter(doc => {
+                    const matches = doc.role && doc.role.some(role => filters.Role.includes(role));
+                    console.log(`Filtering by role: ${filters.Role}, Document role: ${doc.role}, Matches: ${matches}`);
+                    return matches;
+                });
+        
+                // Log after role filtering
+                console.log('Filtered data by role length:', filteredData.length);
+                console.log('Filtered data by role:', JSON.stringify(filteredData, null, 2));
+            }
+        
+            // Apply pagination
+            const count = filteredData.length;
+            filteredData = filteredData.slice(req.body.skip, req.body.skip + req.body.limit);
+        
+            // Log after pagination
+            console.log('Paginated data length:', filteredData.length);
+            console.log('Paginated data:', JSON.stringify(filteredData, null, 2));
+        
+            // Send response
+            res.send({ message: "batchlist", count: count, status: true, data: filteredData });
+        } catch (error) {
+            console.error('Error retrieving data:', error);
+            res.status(500).send({ message: "Error retrieving data", status: false });
+        }
+        
+        
+
+
+        
+        
+        
+        
 
     } catch (error) {
         console.log(error)
@@ -1216,6 +1366,7 @@ const batchStatus=async(req,res)=>{//for updateing the status of the the batch
 
 const getBatchDetails=async(req,res)=>{//for getting the batch details
     try {
+        console.log(req.body)
         const {id}=req.body
         const docRef=await admin.firestore().collection('batch').doc(id).get()
         const data=docRef.data()
@@ -1277,24 +1428,32 @@ const batchUsers = async (req, res) => { // For getting the batch users list
             return res.status(400).send({ message: "Batch ID is required", status: false });
         }
 
+        // const batchQuery = admin.firestore().collection("userbatch")
+        //     .where("batchid", "==", id)
+        //     .offset(skip)
+        //     .limit(limit);
         const batchQuery = admin.firestore().collection("userbatch")
-            .where("batchid", "==", id)
-            .offset(skip)
-            .limit(limit);
+        .where("batchid", "==", id);
 
         const countQuery = admin.firestore().collection("userbatch")
             .where("batchid", "==", id);
 
         const [snapshot, countSnapshot] = await Promise.all([batchQuery.get(), countQuery.get()]);
+        let batchid=snapshot.docs[0].data().batchid
+        let companyid=snapshot.docs[0].data().companyid
+        console.log(companyid)
+        
 
         const regex = new RegExp(search, 'i'); // Create a regex from the search string, case-insensitive
         
 
         const userPromises = snapshot.docs.map(async (doc) => {
-            const userId = doc.data().userid;
-            const userRef = admin.firestore().collection("UserNode").doc(userId);
-            const userDoc = await userRef.get();
-            const userData = userDoc.data();
+            const userData = doc.data().userdata;
+            
+            // const userId = doc.data().userid;
+            // const userRef = admin.firestore().collection("UserNode").doc(userId);
+            // const userDoc = await userRef.get();
+            // const userData = userDoc.data();
 
             if (userData && regex.test(userData.username)) {
                 return userData;
@@ -1302,10 +1461,15 @@ const batchUsers = async (req, res) => { // For getting the batch users list
             return null;
         });
 
-        const users = (await Promise.all(userPromises)).filter(user => user !== null);
-        const count = countSnapshot.size;
+    //    let batchid=userData[0]
+    const users = (await Promise.all(userPromises)).filter(user => user !== null);
+    const count = countSnapshot.size;
+    let batchdata=(await admin.firestore().collection("batch").doc(batchid).get()).data()
+    let companydata=(await admin.firestore().collection("UserNode").doc(companyid).get()).data()
+    // console.log(companydata)
+    // console.log(batchdata)
 
-        res.send({ message: "Batch users list", data: users, status: true, count });
+        res.send({ message: "Batch users list", data: users, status: true, count ,batchdata:batchdata,companydata});
     } catch (error) {
         console.error("Error retrieving users: ", error);
         res.status(500).send({ message: "Error retrieving users", status: false, error: error.message });
@@ -1431,32 +1595,6 @@ const chagneBatchList=async(req,res)=>{//for getting the specific company change
     }
 }
 
-
-const shiftBatch=async(req,res)=>{//for shifting the uer form one batch to another
-    try {
-        console.log(req.body)
-       let snapshot= await admin.firestore().collection("userbatch").where("userid","==",req.body.userid).get()
-       console.log(snapshot.docs[0].data())
-       let currentBatch=snapshot.docs[0].data().batchid
-       let batchref=await await admin.firestore().collection("batch").doc(currentBatch)
-       let batchdata=(await batchref.get()).data()
-       console.log(batchdata.usercount===undefined)
-       if(batchdata.usercount===undefined||batchdata.usercount===0){
-        
-        batchref.update({usercount:0})
-       }else{
-        batchref.update({usercount:batchdata.usercount-1})
-       }
-      
-        snapshot.forEach((doc)=>{
-            doc.ref.update({batchid:req.body.batchid})
-        })
-        res.status(200).send({message:"batch shfited succesfully",status:true})
-    } catch (error) {
-        console.log(error)
-        res.status(500).send({message:"somthing went wrong",status:false})
-    }
-}
 
 
 const profileData=async(req,res)=>{//for getting the profile data  of admin 
@@ -1586,11 +1724,19 @@ const deletedUserslist=async(req,res)=>{//fot getting the delted users list
 
 const addeditTrainer=async(req,res)=>{//for adding and editing the trainer
     try {
-        // console.log(req.body)
+        console.log(req.body)
         let action=req.body.actiontype
         delete req.body.actiontype
         let data=req.body
         if(action==="create"){
+            const companyRef = await admin.firestore().collection("UserNode").doc(req.body.companyid);
+            console.log("==========================================")
+            let companydata=(await companyRef.get()).data()
+            console.log(companydata)
+            data.companydata=companydata
+            companyRef.update({   
+              trainerscount: firebbase.firestore.FieldValue.increment(1)
+            });
             data.createAt=firebbase.firestore.FieldValue.serverTimestamp()
         let trainerRef= await admin.firestore().collection("UserNode").add(data)
         let docref=await admin.firestore().collection("UserNode").doc(trainerRef.id)
@@ -1612,26 +1758,32 @@ const addeditTrainer=async(req,res)=>{//for adding and editing the trainer
 
 const trainersList = async (req, res) => {//for getting the trainers list
     try {
+        console.log(req.body)
         let skip = req.body.skip ?? 0;
         let limit = req.body.limit ?? 10;
         let search = req.body.search;
         let status = [];
 
-        if (req.body.status === 3) {
+        let reqdata=req.body.filter_action
+        let reqstatus=reqdata.Status
+        if (reqstatus === "3") {
             status = ["1", "2"];
-        } else if (req.body.status === 1) {
+        } else if (reqstatus === '1') {
             status = ["1"];
-        } else if (req.body.status === 2) {
+        } else if (reqstatus ==='2') {
             status = ["2"];
-        } else if (req.body.status === 0) {
+        } else if (reqstatus === '0') {
             status = ["0"];
+        }else{
+           
+            status=["1","2"]
         }
 
-        let allcount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","in",["1","2"]).get()).size
-        let size=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","in",status).get()).size //for showing the pagination count for total documents
-        let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","1").get()).size
-        let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","2").get()).size
-        let deletecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","0").get()).size
+        // let allcount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","in",["1","2"]).get()).size
+        // let size=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","in",status).get()).size //for showing the pagination count for total documents
+        // let activecoutn=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","1").get()).size
+        // let inactivecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","2").get()).size
+        // let deletecount=(await admin.firestore().collection("UserNode").where("access","==","Trainer Login").where("status","==","0").get()).size
         let trainerList = [];
         let docQuery = admin.firestore().collection("UserNode")
             .where("access", "==", "Trainer Login")
@@ -1642,6 +1794,17 @@ const trainersList = async (req, res) => {//for getting the trainers list
             docQuery = docQuery.where("slugname", ">=", searchTerm)
                                      .where("slugname", "<=", searchTerm + "\uf8ff");
         }
+        if(reqdata.Company){
+            docQuery=docQuery.where("companyid","==",reqdata.Company);
+        }
+        if(reqdata.Country){
+            docQuery=docQuery.where("country","==",reqdata.Country)
+        }
+        if(reqdata.City){
+            docQuery=docQuery.where("city","==",reqdata.City)
+        }
+        
+        let size=(await docQuery.get()).size
 
         let snapshot = await docQuery.offset(skip).limit(limit).orderBy("createAt",'desc').get();                                  //here the below code want to be used for the getting the order in des of addignt to database
          // let snapshot = await docQuery.offset(skip).limit(limit).orderBy("createAt",'desc').get();
@@ -1650,9 +1813,9 @@ const trainersList = async (req, res) => {//for getting the trainers list
             trainerList.push(doc.data());
         });
 
-        // console.log(trainerList);
+        console.log(trainerList);
 
-        res.send({ message: "Trainers fetched successfully", status: true, data: trainerList,count:size ,all:allcount,active:activecoutn,inactive:inactivecount,delete:deletecount});
+        res.send({ message: "Trainers fetched successfully", status: true, data: trainerList,count:size });
 
     } catch (error) {
         console.log(error);
@@ -1696,39 +1859,375 @@ const deleteTrainer=async(req,res)=>{//this is for deleting the trainer
 }
 
 
-const smtpSetting=async(req,res)=>{
+
+
+
+
+
+
+const createBatch=async(req,res)=>{
     try {
-        let result=await SmptSchema.findOne({alias:"smtp"})
-   
-        res.send(result.settings)
+        console.log(req.body)
         
+        
+        let status = ["1"];
+        let reqdata=req.body
+      
+      
+
+        let query = admin.firestore().collection("UserNode")
+        .where('access', '==', 'App User')
+        .where('status', 'in', status)
+        if(reqdata.company){
+            query=query.where("companyid","==",reqdata.company);
+        }
+        if(reqdata.city){
+            query=query.where("city","in",reqdata.city)
+        }
+        // if(reqdata.country){
+        //     query=query.where("country","==",reqdata.country)
+        // }
+        if(reqdata.role){
+            query=query.where("role","in",reqdata.role)
+        }
+     
+        if(reqdata.startdate){
+            reqdata.startdate=moment(reqdata.startdate).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+          
+            query=query.where("joindate", ">=", reqdata.startdate)
+        }
+        
+        if(reqdata.enddate){
+        
+            reqdata.To_Date=moment(reqdata.endate).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            console.log(reqdata.enddate)
+            query=query.where("joindate", "<=", reqdata.enddate)
+        }
+        
+        if(req.body.search){
+            let searchTerm=req.body.search.toLowerCase()
+            query = query.where("username", ">=", searchTerm)
+                         .where("username", "<=", searchTerm + "\uf8ff");
+        }
+        
+        const snapshot = await query.orderBy("createAt","desc").get()
+            
+            let data = [];
+            // snapshot.forEach(doc => {
+            //     data.push({_id: doc.id, ...doc.data()});
+            // });
+            for (const doc of snapshot.docs) {
+                let existsSnapshot = await admin.firestore().collection("userbatch").where("userid", "==", doc.id).get();
+                // console.log(existsSnapshot)
+                if(existsSnapshot.empty){
+                    data.push({ _id: doc.id, ...doc.data() });
+                }
+            }
+            
+           return  res.status(200).send({data,message: "Users fetched successfully",status: true});
+
     } catch (error) {
-        console.log("error")
+        console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
 }
 
-const smtpSave=async(req,res)=>{
+const batchCreatedAdd=async(req,res)=>{
     try {
+               
+        // console.log(req.body)
+        const {selectedusers,batchdata}=req.body
+        console.log(selectedusers)
+        console.log(batchdata)
+        batchdata.createDate=moment().format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+  
         
-        let settings=req.body
-        console.log(settings)
-        let data={
-            settings:{
-                smtp_host:settings.smtp_host,
-                smtp_port:settings.smtp_port,
-                smtp_password:settings.smtp_password,
-                mode:settings.mode,
-                smtp_username:settings.smtp_username
+        batchdata.enddate=moment(batchdata.enddate).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+        batchdata.createAt=firebbase.firestore.FieldValue.serverTimestamp()
+            let companyShort = batchdata.company.slice(0, 2).toUpperCase();   
+            // let cityShort = batchdata.city.slice(0, 2).toUpperCase();  
+            // let teamShort = batchdata.team.slice(0, 2).toUpperCase();   
+            // let roleShort = batchdata.role.slice(0, 2).toUpperCase();  
+            let cityShort = batchdata.city.map(item => item.slice(0, 2)).join('').toUpperCase();  
+            let teamShort = batchdata.team.map(item => item.slice(0, 2)).join('').toUpperCase();  
+            let roleShort = batchdata.role.map(item => item.slice(0, 2)).join('').toUpperCase(); 
+            // let todaydata = new Date().toISOString().slice(5, 10).replace(/-/g, '-');
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+            const year = String(today.getFullYear()).slice(-2); // Last two digits of the year
+            
+            const formattedDate = `${day}-${month}-${year}`;
+            console.log(formattedDate); // e.g., "02-08-24"
+             let shortname = `${companyShort}-${cityShort}-${teamShort}-${roleShort}-${formattedDate}`;
+             batchdata.name=shortname
+             batchdata.shortname=shortname
+             batchdata.slugname=shortname.toLowerCase()
+            let bathref=await admin.firestore().collection('batch').add(batchdata)
+            let companyRef=await admin.firestore().collection("UserNode").doc(batchdata.companyid)
+            await companyRef.update({
+                batchcount:firebbase.firestore.FieldValue.increment(1)
+            })
+            let idofBatch=bathref.id
+            console.log(idofBatch)
+            let count=0
+            let userIds=selectedusers.map(x => x._id);
+            // await bathref.update({_id: idofBatch});
+            let batchPromises = userIds.map(async (id,index) => {
+                let userBatchSnapshot = await admin.firestore().collection("userbatch")
+                .where("userid", "==", id)
+                .get();
+              
+            
+            if (userBatchSnapshot.empty) {
+                count++
+                let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: idofBatch,companyid:batchdata.companyid,userdata:selectedusers[index]});
+                await userBatchRef.update({_id: userBatchRef.id});
             }
-        }
-        let result=await SmptSchema.updateOne({alias:"smtp"},{$set:data},{upsert:true})
-        res.send({message:"updated successfully",status:true})
+
+            });
+            // Wait for all batchPromises to resolve
+            await Promise.all(batchPromises);
+            // console.log("here")
+            console.log(count)
+            await bathref.update({_id: idofBatch,usercount:count});
+            console.log("-------------------")
+
+            res.send({message: "Batch created", status: true});
+
         
     } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
 
-
+const editBatch=async(req,res)=>{
+    try {
+        let data=req.body
+        let batchRef=admin.firestore().collection("batch").doc(data._id)
+        batchRef.update(data)
+        res.status(200).send({message:"Updated Successfully",status:true    })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong ",status:false})
+    }
+}
+const bacthnewUserList =async(req,res)=>{
+    try {
+        console.log(req.body)
+        let status = ["1"];
+        let reqdata=req.body
+        let query = admin.firestore().collection("UserNode")
+        .where('access', '==', 'App User')
+        .where('status', 'in', status)
+        if(reqdata.company){
+            query=query.where("companyid","==",reqdata.company);
+        }
+        if(reqdata.city){
+            query=query.where("city","in",reqdata.city)
+        }
+       
+        if(reqdata.role){
+            query=query.where("role","in",reqdata.role)
+        }
+     
+        if(reqdata.startdate){
+            reqdata.startdate=moment(reqdata.startdate).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+          
+            query=query.where("joindate", ">=", reqdata.startdate)
+        }
         
+        if(reqdata.enddate){
+            console.log("hi  here")
+            reqdata.To_Date=moment(reqdata.endate).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            console.log(reqdata.enddate)
+            query=query.where("joindate", "<=", reqdata.enddate)
+        }    
+        const snapshot = await query.orderBy("createAt","desc").get()
+            
+            let data = [];
+            for (const doc of snapshot.docs) {
+                let existsSnapshot = await admin.firestore().collection("userbatch").where("userid", "==", doc.id).get();
+              
+                if(existsSnapshot.empty){
+                    data.push({ _id: doc.id, ...doc.data() });
+                }
+            }   
+            console.log(data)
+           return  res.status(200).send({data,message: "Users fetched successfully",status: true});
+
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went worng ",status:false})
+    }
+}
+
+const addUsertoBatch=async(req,res)=>{
+    try {
+        console.log(req.body)
+        let {selectedUsers,batchid,company}=req.body
+     
+        let count=0
+        let userIds=selectedUsers.map(x => x._id);
+        let batchPromises = userIds.map(async (id,index) => {
+            let userBatchSnapshot = await admin.firestore().collection("userbatch")
+            .where("userid", "==", id)
+            .get();
+          
+        
+        if (userBatchSnapshot.empty) {
+            count++
+            let userBatchRef = await admin.firestore().collection("userbatch").add({userid: id, batchid: batchid,companyid:company,userdata:selectedUsers[index]});
+            await userBatchRef.update({_id: userBatchRef.id});
+        }
+
+        });
+       
+        await Promise.all(batchPromises);
+        console.log(count)
+        
+        let batchRef=await  admin.firestore().collection("batch").doc(batchid)
+        batchRef.update({usercount:firebbase.firestore.FieldValue.increment(count)})
+
+        res.send({message:"User added  successfully",status:true})
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing wetn wrong",status:false})
+    }
+}
+
+
+
+
+const shiftBathlist=async(req,res)=>{
+    try{
+        console.log(req.body)
+        const filters = req.body
+        let bathreQuery = admin.firestore().collection("batch").where("companyid", "==", filters.company);
+        
+        if (filters.From_Date) {
+            filters.From_Date = moment(filters.startdata).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+            bathreQuery = bathreQuery.where("startdate", ">=", filters.From_Date);
+        }
+        
+        if (filters.To_Date) {
+            filters.To_Date = moment(filters.To_Date).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
+            bathreQuery = bathreQuery.where("startdate", "<=", filters.enddate);
+        }
+        
+        if (req.body.search) {
+            let searchTerm = req.body.search;
+            bathreQuery = bathreQuery.where("slugname", ">=", searchTerm)
+                                     .where("slugname", "<=", searchTerm + "\uf8ff");
+        }
+        
+      
+        
+        try {
+            const baseSnapshot = await bathreQuery.get();
+            let baseData = [];
+            baseSnapshot.forEach(doc => {
+                baseData.push({_id: doc.id, ...doc.data()});
+            });
+        
+          
+        
+            // Apply additional filtering for 'City'
+            let filteredData = baseData;
+        
+            if (Array.isArray(filters.city) && filters.city.length > 0) {
+                filteredData = filteredData.filter(doc => {
+                    const matches = doc.city && doc.city.some(city => filters.city.includes(city));
+                    console.log(`Filtering by city: ${filters.city}, Document city: ${doc.city}, Matches: ${matches}`);
+                    return matches;
+                });
+        
+              
+            }
+        
+            // Apply additional filtering for 'Role'
+            if (Array.isArray(filters.role) && filters.role.length > 0) {
+                filteredData = filteredData.filter(doc => {
+                    const matches = doc.role && doc.role.some(role => filters.role.includes(role));
+                    console.log(`Filtering by role: ${filters.Role}, Document role: ${doc.role}, Matches: ${matches}`);
+                    return matches;
+                });
+        
+              
+            }
+        
+        
+            // const count = filteredData.length;
+            console.log(filteredData)   
+            let batchdata=filteredData.filter((x)=>x._id!==req.body.batchid)
+            const count = batchdata.length;
+            if(batchdata.length>0){
+             
+                batchdata = batchdata.slice(req.body.skip,req.body.limit);
+                
+            }
+          console.log(batchdata)
+            res.send({ message: "batchlist", count: count, status: true, data: batchdata });
+        } catch (error) {
+            console.error('Error retrieving data:', error);
+            res.status(500).send({ message: "Error retrieving data", status: false });
+        }
+    }catch(error){
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+const shiftBatch=async(req,res)=>{//for shifting the uer form one batch to another
+    try {
+        console.log(req.body)
+
+    let {userData,shiftingbatch,currentbatchid}=req.body
+    console.log(userData)
+    let count=userData.length
+    console.log('++++++++++++++++++++++++++++++++++++++++++++++++')
+
+    console.log(currentbatchid)
+    // console.log(shiftingbatch)
+    let shifitingbatchid=shiftingbatch._id
+    console.log(shifitingbatchid)
+    for (let i = 0; i < userData.length; i++) {
+        let batchuserRef = await admin.firestore().collection("userbatch").where('userid', '==', userData[i]._id).get();
+        
+        batchuserRef.forEach(async (doc) => {
+            await doc.ref.update({ batchid: shifitingbatchid });
+        });
+    }
+
+    let currentbatch=await admin.firestore().collection("batch").doc(currentbatchid)
+    currentbatch.update({usercount:firebbase.firestore.FieldValue.increment(-count)})
+    let shifitingbatch=await admin.firestore().collection("batch").doc(shifitingbatchid).update({usercount:firebbase.firestore.FieldValue.increment(count)})
+
+    res.status(200).send({message:"Shifted successfully",status:true})
+
+
+    //     console.log(req.body)
+    //    let snapshot= await admin.firestore().collection("userbatch").where("userid","==",req.body.userid).get()
+    //    console.log(snapshot.docs[0].data())
+    //    let currentBatch=snapshot.docs[0].data().batchid
+    //    let batchref=await await admin.firestore().collection("batch").doc(currentBatch)
+    //    let batchdata=(await batchref.get()).data()
+    //    console.log(batchdata.usercount===undefined)
+    //    if(batchdata.usercount===undefined||batchdata.usercount===0){
+        
+    //     batchref.update({usercount:0})
+    //    }else{
+    //     batchref.update({usercount:batchdata.usercount-1})
+    //    }
+      
+    //     snapshot.forEach((doc)=>{
+    //         doc.ref.update({batchid:req.body.batchid})
+    //     })
+    //     res.status(200).send({message:"batch shfited succesfully",status:true})
+    } catch (error) {
         console.log(error)
         res.status(500).send({message:"somthing went wrong",status:false})
     }
@@ -1779,9 +2278,15 @@ module.exports = {
     updateTrainerStatus,
     deleteTrainer,
     batchCompanyList,
-    smtpSetting,
-    smtpSave,
-    companyDelete
+    // smtpSetting,
+    // smtpSave,
+    companyDelete,
+    createBatch,
+    batchCreatedAdd,
+    editBatch,
+    bacthnewUserList,
+    addUsertoBatch,
+    shiftBathlist
     
 }
 
