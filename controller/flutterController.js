@@ -76,7 +76,7 @@ const startPractice=async(req,res)=>{
 }
 const endPractice=async(req,res)=>{
     try {
-        console.log(req.body)
+        
    
         if(["Pronunciation Lab Report", "Sentence Construction Lab Report", "Call Flow Practise Report", "Sound-wise Report"].includes(req.body.practicetype)){
           let   data=req.body
