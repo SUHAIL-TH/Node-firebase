@@ -3,7 +3,12 @@ const notificationSchema=require("../model/notification")
 const {admin}=require("../config/firebaseConfig")
 const practicedb=require("../model/practiceSchema")
 const pronunciationlabSchema=require("../model/pronunciationlabSchema")
-const { options } = require("../routes/flutter")
+const sentencesLabReport=require("../model/sentenceslabSchema")
+
+const moment=require('moment')
+const { query, where, getDocs } = require('firebase/firestore'); 
+const firebbase = require("firebase-admin");
+const pronunciatonLabReport = require("../model/pronunciationlabSchema")
 
 
 
@@ -76,7 +81,7 @@ const startPractice=async(req,res)=>{
 }
 const endPractice=async(req,res)=>{
     try {
-        
+        console.log(req.body)
    
         if(["Pronunciation Lab Report", "Sentence Construction Lab Report", "Call Flow Practise Report", "Sound-wise Report"].includes(req.body.practicetype)){
           let   data=req.body
@@ -227,9 +232,11 @@ const pronunciationLabReport=async(req,res)=>{
 const pronunciationLabReportlist=async(req,res)=>{
     try {
         console.log(req.body)
-        const skip=req.body.skip??10
-        const limit=req.body.limit??0
-
+        const skip=req.body.skip??0
+        const limit=req.body.limit??10
+        req.body.startdate=moment(req.body.startdate).startOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+        req.body.enddate=moment(req.body.enddate).endOf('day').format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+        console.log(req.body)
         let query=[]
         if (req.body.search && req.body.search.trim() !== "") {
             query.push({
@@ -241,8 +248,23 @@ const pronunciationLabReportlist=async(req,res)=>{
                 }
             });
         }
-        if(req.body.city)
-        // if(req.body.compa)
+        if(req.body.company){
+            query.push({$match:{companyid:req.body.company}})
+        }
+        if(req.body.city){
+            query.push({$match:{"userData.city":req.body.city}})
+        }
+        if (req.body.startdate && req.body.enddate) {
+            query.push({
+                $match: {
+                    "userData.joindate": {
+                        $gte: req.body.startdate,
+                        $lte: req.body.enddate
+                    }
+                }
+            });
+        }
+      
         query.push(
             {$addFields:{
                 username:"$userData.username"}
@@ -251,7 +273,10 @@ const pronunciationLabReportlist=async(req,res)=>{
                 batchname:"$batchdata.name"}
             },
             {$addFields:{
-                companyname:"$companydata.companyname"}
+                companyname:"$companydata.companyname",
+                cityname:"$userData.city",
+                team:"$userData.team"
+            }
             },
             {
                 $addFields: {
@@ -274,7 +299,9 @@ const pronunciationLabReportlist=async(req,res)=>{
                 practiceattempt:1,
                 listeningattempt:1,
                 wordslength:1,
-                successRatio:1
+                successRatio:1,
+                cityname:1,
+                team:1
             }}, 
             {$facet:{
                 total: [
@@ -288,8 +315,10 @@ const pronunciationLabReportlist=async(req,res)=>{
            
 
         )
+       
         
         let result=await pronunciationlabSchema.aggregate(query)
+
         res.status(200).send({message:"pronuncation lab listing overall",data:result,status:true})
         
     } catch (error) {
@@ -298,10 +327,199 @@ const pronunciationLabReportlist=async(req,res)=>{
     }
 }
 
+
+const proUserOverAll=async(req,res)=>{
+    try {
+        console.log(req.body)
+        const attemptsCollection = admin.firestore().collection("proLabReports");
+
+        
+        const q = attemptsCollection.where("userId", "==", req.body.userid);
+
+        
+        const querySnapshot = await q.get();
+
+        const results = {};
+
+     
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            
+            let dateKey;
+            if (data.date instanceof firebbase.firestore.Timestamp) {
+                dateKey = moment(data.date.toDate()).format("DD-MMM-YYYY");
+            } else {
+               
+                dateKey = moment(data.date).format("DD-MMM-YYYY");
+            }
+
+            if (!results[dateKey]) {
+                results[dateKey] = {
+                    date: dateKey,
+                    totalWords: 0,
+                    totalCorrectAttempts: 0,
+                    totalPracticeAttempts: 0,
+                    totalListeningAttempts: 0,
+                };
+            }
+
+   
+            results[dateKey].totalWords += 1; 
+            results[dateKey].totalCorrectAttempts += data.correct || 0;
+            results[dateKey].totalPracticeAttempts += data.pracatt || 0;
+            results[dateKey].totalListeningAttempts += data.listatt || 0;
+            if (results[dateKey].totalPracticeAttempts > 0) {
+                results[dateKey].successRatio = 
+                    (results[dateKey].totalCorrectAttempts / results[dateKey].totalPracticeAttempts) * 100;
+            } else {
+                results[dateKey].successRatio = 0;
+            }
+        });
+
+        // Convert the results object to an array
+        const resultArray = Object.values(results);
+        resultArray.sort((a, b) => {
+            return new Date(b.date) - new Date(a.date);
+        });
+        let count=resultArray.length
+        console.log(resultArray)
+        res.send({message:"user overall pronunciaton result",status:true,data:resultArray,count:count})
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+const  proUserperDay=async(req,res)=>{
+    try {
+        console.log(req.body)
+        let {userid,date}=req.body
+        let datasnapshot=await admin.firestore().collection("proLabReports").where("userId","==",userid).where("date","==",date).get()
+        let data=[]
+        datasnapshot.forEach((doc) => {
+            const docData = doc.data();
+            let successRatio = 0;
+            if (docData.pracatt && docData.correct) {
+              successRatio = (docData.correct / docData.pracatt) * 100;
+            } 
+            docData.successRatio = successRatio;
+            data.push(docData);
+          });
+        let count=data.length
+        console.log(data)
+
+        res.send({message:"user pracited per day",status:true,data:data,count:count})
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:fasle})
+    }
+}
+const proReportperWord=async(req,res)=>{
+    try {
+        let {userid,word}=req.body
+        console.log(req.body)
+        let wordssnapshot=await admin.firestore().collection("proLabReports").where("userId","==",userid).where("word","==",word).get()
+
+        let data=[]
+        wordssnapshot.forEach((doc)=>{
+            const docData = doc.data();
+            let successRatio = 0;
+            if (docData.pracatt && docData.correct) {
+              successRatio = (docData.correct / docData.pracatt) * 100;
+            } 
+            docData.successRatio = successRatio;
+            data.push(docData);
+        })
+
+        let count=data.length
+
+        res.send({message:"word report overall data",status:true,data:data,count:count})
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went wrong",status:false})
+    }
+}
+
+
+
+const speechlabReports=async(req,res)=>{
+    try {
+        console.log(req.body)
+        const{userid,score,type,sentence}=req.body
+     
+        let userexsists=await sentencesLabReport.findOne({userid:userid})
+        console.log(userexsists)
+        if(userexsists){
+
+        }else{
+
+            let userdata=(await admin.firestore().collection("UserNode").doc(userid).get()).data()
+            let companydata=(await admin.firestore().collection("UserNode").doc(userdata.companyid).get()).data()
+            let batchUserSnapshot=await admin.firestore().collection("userbatch").where("userid","==",userid).get()
+            let batchUserData
+            if (!batchUserSnapshot.empty) {
+                batchUserData = batchUserSnapshot.docs[0].data();
+            } else {
+                console.log("No matching documents.");
+                return res.send({message:"this user has no batch!! please add to a batch",status:false})
+            }
+            let batchdata=(await admin.firestore().collection("batch").doc(batchUserData.batchid).get()).data()
+
+            let datas
+            if(type==="listening"){
+               
+                datas={
+                    userid:userid,
+                    userData:userdata,
+                    username:userdata.username,
+                    companyid:userdata.companyid,
+                    companydata:companydata,
+                    sentences:[sentence],
+                    listeningattempt:1,
+                    batchid:batchUserData.batchid,
+                    batchdata:batchdata
+                    
+                }
+                let sentencesdata=new sentencesLabReport(datas)
+              let data=  await sentencesdata.save()
+              console.log(data)
+            }else if(type ==="practice"){
+                datas={
+                    userid:userid,
+                    userData:userdata,
+                    username:userdata.username,
+                    companyid:userdata.companyid,
+                    companydata:companydata,
+                    sentences:[sentence],
+                    practiceattempt:1,
+                    batchid:batchUserData.batchid,
+                    batchdata:batchdata
+                    
+                }
+                let sentencesdata=new sentencesLabReport(datas)
+              let data=  await sentencesdata.save()
+
+            }
+        }
+        res.send({message:"added successfully",status:true})
+
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({message:"somthing went worng",status:false})
+    }
+}
+
 module.exports={
     notificationList,
     startPractice,
     endPractice,
     pronunciationLabReport,
-    pronunciationLabReportlist
+    pronunciationLabReportlist,
+    proUserOverAll,
+    proUserperDay,
+    proReportperWord,
+    speechlabReports
 }
