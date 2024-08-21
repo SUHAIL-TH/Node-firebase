@@ -73,6 +73,7 @@ io.on('connection', (socket) => {
 
 // });
 
+//this is for the cron job for running for sending the mail 
 cron.schedule('0 7 * * *', async () => {
   // subscriptioncron.subscriptionrenewal30days();
 });
