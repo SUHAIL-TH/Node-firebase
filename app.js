@@ -63,15 +63,6 @@ io.on('connection', (socket) => {
 });
 
 
-// cron.schedule('* * * * *', () => {
-//   console.log("here i have reached----++++")
-//   const istDate = moment.tz(new Date(), "Asia/Kolkata").format('YYYY-MM-DD HH:mm:ss');
-//   const indianTime = moment().tz("Asia/Kolkata").format('YYYY-MM-DD HH:mm:ss');
-//   console.log(indianTime);
-//   console.log("why the time zone is not printing here")
-//   subscriptioncron.subscriptionrenewal5days();
-
-// });
 
 //this is for the cron job for running for sending the mail 
 cron.schedule('0 7 * * *', async () => {
