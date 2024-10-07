@@ -6,6 +6,7 @@ const moment=require("moment")
 
 const emailTemplateSchema = require("../model/email_template")
 
+
 async function subscriptionrenewal30days(){
     try {
         let transporterdata=await transporter.getTransported()

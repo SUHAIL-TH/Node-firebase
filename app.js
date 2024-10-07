@@ -63,8 +63,16 @@ io.on('connection', (socket) => {
 });
 
 
+// cron.schedule('* * * * *', () => {
+//   console.log("here i have reached----++++")
+//   const istDate = moment.tz(new Date(), "Asia/Kolkata").format('YYYY-MM-DD HH:mm:ss');
+//   const indianTime = moment().tz("Asia/Kolkata").format('YYYY-MM-DD HH:mm:ss');
+//   console.log(indianTime);
+//   console.log("why the time zone is not printing here")
+//   subscriptioncron.subscriptionrenewal5days();
 
-//this is for the cron job for running for sending the mail 
+// });
+
 cron.schedule('0 7 * * *', async () => {
   // subscriptioncron.subscriptionrenewal30days();
 });
@@ -83,7 +91,7 @@ app.use((req, res, next) => {
   res.header("Cache-Control", "no-cache,  no-store, must-revalidate");
   next();
 });
-app.use("/public/images",express.static(__dirname+"public/images"))  
+app.use("/public",express.static("public"))  
 
 app.use(morgan("dev"))
 app.use("/",adminRoutes)
@@ -107,7 +115,7 @@ process.on('SIGINT', () => {
   server.close(() => {
       console.log("HTTP server closed");
       dbconnect.dbdisconnect();  // Close MongoDB connection
-      process.exit(0);  // Exit the process after disconnecting
+      process.exit(0);          // Exit the process after disconnecting
   });
 });
 
@@ -115,7 +123,7 @@ process.on('SIGTERM', () => {
   console.log("SIGTERM signal received: closing HTTP server");
   server.close(() => {
       console.log("HTTP server closed");
-      dbconnect.dbdisconnect();  // Close MongoDB connection
-      process.exit(0);  // Exit the process after disconnecting
-  });
+      dbconnect.dbdisconnect();     // Close MongoDB connection
+      process.exit(0);             // Exit the process after disconnecting
+  });  
 });
