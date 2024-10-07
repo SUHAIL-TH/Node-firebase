@@ -18,5 +18,20 @@ flutterRoutes.post("/proreportperword",fluttterController.proReportperWord)
 // speech lab report
 
 flutterRoutes.post("/speechlabreportsadd",fluttterController.speechlabReports)
+flutterRoutes.post("/speechlabreportlist",fluttterController.speechlabReportList)
+flutterRoutes.post("/senteceslabuseroverall",fluttterController.senteceslabOverallData)
+flutterRoutes.post("/sentecesperdayresult",fluttterController.sentecesPerDay)
+flutterRoutes.post("/senteceslabreportforsentences",fluttterController.sentencesReportperSentences)
+
+flutterRoutes.post("/speechlabsenariodropdown",fluttterController.speechlabsenariodropdown)
+flutterRoutes.post("/speechlabreportmainload",fluttterController.speechlabreportMainLoad)
+
+
+// sms gateway for sending the otp
+flutterRoutes.post("/sendopt",fluttterController.sendOtp)
+flutterRoutes.post("/verifyotp",fluttterController.verifyOtp)
+
+
+flutterRoutes.post('/sentecesandcallflowgraph',fluttterController.sentecesflowlabgraph)
 
 module.exports=flutterRoutes
