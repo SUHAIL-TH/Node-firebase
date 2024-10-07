@@ -23,6 +23,8 @@ async function pushNotification(data) {
             return; // Exit early if there are no tokens
         }
 
+
+        
         // Function to split array into chunks
         const chunkArray = (array, size) => {
             const result = [];
